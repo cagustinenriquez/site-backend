@@ -4,7 +4,14 @@ Backend API for [agustinenriquez.dev](https://agustinenriquez.dev), a personal b
 
 ## Overview
 
-This backend provides the core API for managing blog posts, content, and other site features. It's designed to be lightweight, performant, and easy to maintain.
+This is a FastAPI-based backend providing RESTful APIs for managing blog posts and site content. Built with Python for agustinenriquez.dev.
+
+## Stack
+
+- **FastAPI** - Modern Python web framework
+- **Uvicorn** - ASGI server
+- **SQLAlchemy** - ORM for database operations
+- **Pydantic** - Data validation
 
 ## Getting Started
 
@@ -20,25 +27,33 @@ For local development setup, see [GETTING_STARTED.md](./GETTING_STARTED.md).
 
 ```
 site-backend/
+├── main.py                # Application entry point
+├── app/                   # Application code
+│   ├── config.py          # Configuration
+│   ├── models.py          # Pydantic models
+│   └── routes/            # API route handlers
+├── requirements.txt       # Python dependencies
 ├── README.md              # This file
 ├── GETTING_STARTED.md     # Development setup guide
 ├── API.md                 # API documentation
-├── CONTRIBUTING.md        # Contribution guidelines
-└── src/                   # Source code
+└── CONTRIBUTING.md        # Contribution guidelines
 ```
 
 ## Quick Start
 
 ```bash
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
 # Install dependencies
-npm install
+pip install -r requirements.txt
 
 # Start development server
-npm run dev
-
-# Run tests
-npm test
+python main.py
 ```
+
+Access the API at `http://localhost:8000` and docs at `http://localhost:8000/docs`
 
 ## License
 

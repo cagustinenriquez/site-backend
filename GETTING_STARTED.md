@@ -2,29 +2,45 @@
 
 ## Prerequisites
 
-- Node.js 18+ 
-- npm or yarn
+- Python 3.10+
+- pip (Python package manager)
+- Virtual environment (recommended)
 
 ## Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/agustinenriquez/site-backend.git
+   git clone https://github.com/cagustinenriquez/site-backend.git
    cd site-backend
    ```
 
-2. **Install dependencies**
+2. **Create a virtual environment**
    ```bash
-   npm install
+   python -m venv venv
    ```
 
-3. **Environment Setup**
+   Activate it:
+   - **Windows**: `venv\Scripts\activate`
+   - **macOS/Linux**: `source venv/bin/activate`
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Environment Setup**
    
-   Create a `.env` file in the root directory with the required variables:
+   Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Edit `.env` with your configuration:
    ```env
-   NODE_ENV=development
-   PORT=3000
-   # Add other required environment variables here
+   APP_NAME="agustinenriquez.dev API"
+   APP_VERSION="1.0.0"
+   DEBUG=true
+   DATABASE_URL="sqlite:///./blog.db"
    ```
 
 ## Development
@@ -32,54 +48,69 @@
 ### Start the development server
 
 ```bash
-npm run dev
+python main.py
 ```
 
-The server will start at `http://localhost:3000`.
+Or using uvicorn directly:
+```bash
+uvicorn main:app --reload
+```
+
+The server will start at `http://localhost:8000` with automatic reload enabled.
+
+### Access API documentation
+
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
 
 ### Run tests
 
 ```bash
-npm test
+pytest
 ```
 
 Watch mode:
 ```bash
-npm run test:watch
-```
-
-### Build for production
-
-```bash
-npm run build
+pytest --watch
 ```
 
 ## Project Structure
 
 ```
-src/
-├── index.js              # Application entry point
-├── routes/               # API route handlers
-├── controllers/          # Business logic
-├── models/               # Data models
-├── middleware/           # Express middleware
-├── utils/                # Utility functions
-└── config/               # Configuration files
+├── main.py               # Application entry point
+├── app/
+│   ├── __init__.py
+│   ├── config.py         # Configuration management
+│   ├── models.py         # Pydantic models
+│   └── routes/
+│       ├── __init__.py
+│       └── posts.py      # Blog posts endpoints
+├── requirements.txt      # Python dependencies
+└── .env.example          # Environment variables template
 ```
 
 ## Troubleshooting
 
 ### Port already in use
-If port 3000 is already in use, specify a different port:
+If port 8000 is already in use, specify a different port:
 ```bash
-PORT=3001 npm run dev
+uvicorn main:app --reload --port 8001
 ```
 
-### Dependencies installation issues
-Try clearing npm cache:
+### Virtual environment issues
+Ensure the virtual environment is activated before installing dependencies:
 ```bash
-npm cache clean --force
-npm install
+# Windows
+venv\Scripts\activate
+
+# macOS/Linux
+source venv/bin/activate
+```
+
+### ModuleNotFoundError
+Ensure all dependencies are installed:
+```bash
+pip install -r requirements.txt
 ```
 
 ## Next Steps
