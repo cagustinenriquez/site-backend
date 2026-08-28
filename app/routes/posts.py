@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 from app.models import Post, PostCreate, PostUpdate, PostListResponse
 from app import crud
+from app.auth import get_current_user
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 
@@ -33,16 +34,18 @@ async def get_post(slug: str):
 
 
 @router.post("", response_model=Post)
-async def create_post(post: PostCreate):
-    """Create a new blog post (admin only)"""
-    # TODO: Add authentication check
+async def create_post(post: PostCreate, current_user: str = Depends(get_current_user)):
+    """Create a new blog post (requires authentication)"""
     return crud.create_post(post)
 
 
 @router.put("/{slug}", response_model=Post)
-async def update_post(slug: str, post_update: PostUpdate):
-    """Update a blog post (admin only)"""
-    # TODO: Add authentication check
+async def update_post(
+    slug: str,
+    post_update: PostUpdate,
+    current_user: str = Depends(get_current_user)
+):
+    """Update a blog post (requires authentication)"""
     updated = crud.update_post(slug, post_update)
     if not updated:
         raise HTTPException(status_code=404, detail="Post not found")
@@ -50,9 +53,8 @@ async def update_post(slug: str, post_update: PostUpdate):
 
 
 @router.delete("/{slug}")
-async def delete_post(slug: str):
-    """Delete a blog post (admin only)"""
-    # TODO: Add authentication check
+async def delete_post(slug: str, current_user: str = Depends(get_current_user)):
+    """Delete a blog post (requires authentication)"""
     if not crud.delete_post(slug):
         raise HTTPException(status_code=404, detail="Post not found")
     return {"detail": "Post deleted successfully"}

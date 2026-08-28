@@ -1,15 +1,59 @@
 # API Documentation
 
-Base URL: `https://agustinenriquez.dev/api` (production) or `http://localhost:3000/api` (development)
+Base URL: `https://agustinenriquez.dev/api` (production) or `http://localhost:8000/api` (development)
 
 ## Authentication
 
-Add the following header to authenticated requests:
-```
-Authorization: Bearer <token>
+Write operations (POST, PUT, DELETE) require JWT authentication.
+
+### Getting a Token
+
+1. Call the login endpoint with admin password:
+```bash
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"password": "admin"}'
 ```
 
+2. Response:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+3. Use token in subsequent requests:
+```bash
+curl -X POST http://localhost:8000/posts \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "New Post", "content": "..."}'
+```
+
+Token expires after 30 minutes. GET requests (read-only) don't require authentication.
+
 ## Endpoints
+
+### Authentication
+
+#### POST /auth/login
+Get JWT access token
+
+**Request Body:**
+```json
+{
+  "password": "admin"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
 
 ### Blog Posts
 
@@ -56,14 +100,66 @@ Get a single blog post
 ```
 
 #### POST /posts
-Create a new blog post (admin only)
+Create a new blog post (requires authentication)
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
 
 **Request Body:**
 ```json
 {
   "title": "New Post",
   "content": "Post content...",
+  "excerpt": "Optional excerpt",
   "tags": ["tag1"]
+}
+```
+
+**Response:**
+```json
+{
+  "id": "1",
+  "slug": "new-post",
+  "title": "New Post",
+  "content": "Post content...",
+  "excerpt": "Optional excerpt",
+  "tags": ["tag1"],
+  "date": "2026-08-28T12:00:00"
+}
+```
+
+#### PUT /posts/{slug}
+Update a blog post (requires authentication)
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body (all fields optional):**
+```json
+{
+  "title": "Updated Title",
+  "content": "Updated content...",
+  "excerpt": "Updated excerpt",
+  "tags": ["updated"]
+}
+```
+
+#### DELETE /posts/{slug}
+Delete a blog post (requires authentication)
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "detail": "Post deleted successfully"
 }
 ```
 
