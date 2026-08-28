@@ -1,21 +1,9 @@
 from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
+from typing import Optional
 from app.models import Post, PostCreate, PostUpdate, PostListResponse
+from app import crud
 
 router = APIRouter(prefix="/posts", tags=["posts"])
-
-# TODO: Replace with database queries
-MOCK_POSTS = {
-    "first-post": {
-        "id": "1",
-        "slug": "first-post",
-        "title": "Welcome to My Blog",
-        "content": "This is the first blog post...",
-        "excerpt": "Welcome to agustinenriquez.dev",
-        "tags": ["welcome", "intro"],
-        "date": "2026-08-28T00:00:00"
-    }
-}
 
 
 @router.get("", response_model=PostListResponse)
@@ -25,19 +13,10 @@ async def list_posts(
     tag: Optional[str] = None
 ):
     """List all blog posts with pagination and filtering"""
-    # TODO: Implement database pagination
-    posts = list(MOCK_POSTS.values())
-
-    if tag:
-        posts = [p for p in posts if tag in p["tags"]]
-
-    total = len(posts)
-    start = (page - 1) * limit
-    end = start + limit
-    paginated = posts[start:end]
+    posts, total = crud.list_posts(page=page, limit=limit, tag=tag)
 
     return PostListResponse(
-        posts=paginated,
+        posts=posts,
         total=total,
         page=page,
         limit=limit
@@ -47,30 +26,33 @@ async def list_posts(
 @router.get("/{slug}", response_model=Post)
 async def get_post(slug: str):
     """Get a single blog post by slug"""
-    if slug not in MOCK_POSTS:
+    post = crud.get_post(slug)
+    if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    return MOCK_POSTS[slug]
+    return post
 
 
 @router.post("", response_model=Post)
 async def create_post(post: PostCreate):
     """Create a new blog post (admin only)"""
     # TODO: Add authentication check
-    # TODO: Implement database storage
-    raise HTTPException(status_code=501, detail="Not implemented")
+    return crud.create_post(post)
 
 
 @router.put("/{slug}", response_model=Post)
-async def update_post(slug: str, post: PostUpdate):
+async def update_post(slug: str, post_update: PostUpdate):
     """Update a blog post (admin only)"""
     # TODO: Add authentication check
-    # TODO: Implement database update
-    raise HTTPException(status_code=501, detail="Not implemented")
+    updated = crud.update_post(slug, post_update)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return updated
 
 
 @router.delete("/{slug}")
 async def delete_post(slug: str):
     """Delete a blog post (admin only)"""
     # TODO: Add authentication check
-    # TODO: Implement database deletion
-    raise HTTPException(status_code=501, detail="Not implemented")
+    if not crud.delete_post(slug):
+        raise HTTPException(status_code=404, detail="Post not found")
+    return {"detail": "Post deleted successfully"}

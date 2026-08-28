@@ -1,0 +1,14 @@
+{
+  "welcome-to-my-blog": {
+    "id": "1",
+    "slug": "welcome-to-my-blog",
+    "title": "Welcome to My Blog",
+    "content": "This is the first blog post on agustinenriquez.dev. Here you'll find posts about web development, software engineering, and other tech topics I'm passionate about.",
+    "excerpt": "Welcome to agustinenriquez.dev blog",
+    "tags": [
+      "welcome",
+      "intro"
+    ],
+    "date": "2026-08-28T00:00:00"
+  }
+}
