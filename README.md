@@ -41,15 +41,19 @@ site-backend/
 
 ## Quick Start
 
+**Using pip:**
 ```bash
-# Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
+python main.py
+```
 
-# Start development server
+**Using uv (faster):**
+```bash
+uv venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+uv pip install -e ".[dev]"
 python main.py
 ```
 

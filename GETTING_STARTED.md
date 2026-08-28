@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Python 3.10+
-- pip (Python package manager)
+- pip or [uv](https://docs.astral.sh/uv/) (Python package manager)
 - Virtual environment (recommended)
 
 ## Installation
@@ -14,9 +14,16 @@
    cd site-backend
    ```
 
-2. **Create a virtual environment**
+2. **Create and activate a virtual environment**
+
+   Using pip:
    ```bash
    python -m venv venv
+   ```
+
+   Using uv (faster):
+   ```bash
+   uv venv
    ```
 
    Activate it:
@@ -24,8 +31,25 @@
    - **macOS/Linux**: `source venv/bin/activate`
 
 3. **Install dependencies**
+
+   Using pip:
    ```bash
    pip install -r requirements.txt
+   ```
+
+   Using uv (recommended - faster):
+   ```bash
+   uv pip install -r requirements.txt
+   ```
+
+   Or with `pyproject.toml`:
+   ```bash
+   uv pip install -e .
+   ```
+
+   Install with dev dependencies:
+   ```bash
+   uv pip install -e ".[dev]"
    ```
 
 4. **Environment Setup**
