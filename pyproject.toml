@@ -9,6 +9,7 @@ authors = [
     {name = "Augustin Enriquez", email = "cagustinenriquez@gmail.com"}
 ]
 keywords = ["fastapi", "blog", "api"]
+packages = [{include = "app"}]
 
 dependencies = [
     "fastapi==0.104.1",
