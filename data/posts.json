@@ -2,7 +2,7 @@
   "welcome-to-my-blog": {
     "id": "1",
     "slug": "welcome-to-my-blog",
-    "title": "Welcome to My Blog",
+    "title": "Updated Title",
     "content": "This is the first blog post on agustinenriquez.dev. Here you'll find posts about web development, software engineering, and other tech topics I'm passionate about.",
     "excerpt": "Welcome to agustinenriquez.dev blog",
     "tags": [
@@ -10,5 +10,16 @@
       "intro"
     ],
     "date": "2026-08-28T00:00:00"
+  },
+  "test-post": {
+    "title": "Test Post",
+    "content": "This is a test post",
+    "excerpt": "This is a test post",
+    "tags": [
+      "test"
+    ],
+    "id": "2",
+    "slug": "test-post",
+    "date": "2026-08-30T18:23:35.078830"
   }
 }
