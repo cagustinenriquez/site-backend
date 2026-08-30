@@ -80,7 +80,7 @@ def test_create_post_unauthorized():
         "tags": ["test"]
     }
     response = client.post("/posts", json=new_post)
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_create_post():
@@ -106,7 +106,7 @@ def test_update_post_unauthorized():
     """Test updating post without authentication"""
     update_data = {"title": "Updated Title"}
     response = client.put("/posts/welcome-to-my-blog", json=update_data)
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_update_post():
@@ -126,7 +126,7 @@ def test_update_post():
 def test_delete_post_unauthorized():
     """Test deleting post without authentication"""
     response = client.delete("/posts/welcome-to-my-blog")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_delete_post():
