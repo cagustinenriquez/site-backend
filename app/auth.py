@@ -3,7 +3,7 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import os
 
@@ -63,7 +63,7 @@ def verify_token(token: str) -> Optional[str]:
         return None
 
 
-async def get_current_user(credentials: HTTPAuthCredentials = Depends(security)) -> str:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """Dependency to verify JWT token from Authorization header"""
     token = credentials.credentials
     username = verify_token(token)
