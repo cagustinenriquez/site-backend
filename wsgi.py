@@ -10,6 +10,7 @@ sys.path.insert(0, project_dir)
 
 # Import and expose the FastAPI app
 from main import app
+from asgiref.wsgi import ASGItoWSGI
 
-# WSGI application
-application = app
+# Wrap ASGI app (FastAPI) for WSGI server (PythonAnywhere)
+application = ASGItoWSGI(app)
