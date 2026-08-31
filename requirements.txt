@@ -6,7 +6,6 @@ pydantic-settings>=2.1.0
 python-multipart>=0.0.6
 sqlalchemy>=2.0.23
 alembic>=1.13.0
-asgiref>=3.7.0
 
 # Security
 python-jose[cryptography]>=3.3.0
