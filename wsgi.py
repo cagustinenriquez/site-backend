@@ -6,6 +6,10 @@ import sys
 import asyncio
 from io import BytesIO
 
+# Set environment variables
+os.environ.setdefault('ADMIN_PASSWORD', '')
+os.environ.setdefault('SECRET_KEY', '')
+
 # Add the actual project directory to path
 sys.path.insert(0, '/home/agustinenriquez/site-backend')
 
