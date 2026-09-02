@@ -4,14 +4,14 @@ from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
 from app.models import Post, PostCreate, PostUpdate
+from app.config import DATA_DIR
 
-DATA_DIR = Path("data")
 POSTS_FILE = DATA_DIR / "posts.json"
 
 
 def _ensure_data_dir():
     """Ensure data directory exists"""
-    DATA_DIR.mkdir(exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _load_posts() -> dict:

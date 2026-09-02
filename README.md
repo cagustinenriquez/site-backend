@@ -20,6 +20,8 @@ For local development setup, see [GETTING_STARTED.md](./GETTING_STARTED.md).
 ## Documentation
 
 - **[GETTING_STARTED.md](./GETTING_STARTED.md)** - Installation and development setup
+- **[AUTH_SETUP.md](./AUTH_SETUP.md)** - Username + password authentication setup
+- **[PYTHONANYWHERE_DEPLOYMENT.md](./PYTHONANYWHERE_DEPLOYMENT.md)** - Complete PythonAnywhere deployment guide
 - **[API.md](./API.md)** - API endpoints and usage
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Contribution guidelines
 

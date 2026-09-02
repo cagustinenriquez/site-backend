@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_serializer
 from datetime import datetime
 from typing import List, Optional
 
@@ -26,8 +26,11 @@ class Post(PostBase):
     slug: str
     date: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer('date')
+    def serialize_date(self, value: datetime) -> str:
+        return value.isoformat()
 
 
 class PostListResponse(BaseModel):

@@ -11,27 +11,30 @@ authors = [
 keywords = ["fastapi", "blog", "api"]
 
 dependencies = [
-    "fastapi==0.104.1",
-    "uvicorn[standard]==0.24.0",
-    "pydantic==2.5.0",
-    "pydantic-settings==2.1.0",
-    "python-multipart==0.0.6",
-    "sqlalchemy==2.0.23",
-    "alembic==1.13.0",
-    "python-jose[cryptography]==3.3.0",
-    "passlib[bcrypt]==1.7.4",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-multipart>=0.0.6",
+    "sqlalchemy>=2.0.23",
+    "alembic>=1.13.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==7.4.3",
-    "httpx==0.25.2",
-    "pytest-asyncio==0.21.1",
+    "pytest>=7.4.0",
+    "httpx>=0.25.0",
+    "pytest-asyncio>=0.21.0",
 ]
 
 [build-system]
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -41,4 +44,4 @@ python_functions = ["test_*"]
 addopts = "-v --strict-markers"
 
 [tool.uv]
-python-version = "3.10"
+requires-python = ">=3.10"

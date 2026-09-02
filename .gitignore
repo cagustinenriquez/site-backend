@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Application data (contains sensitive user credentials)
+data/users.json
+data/*.backup

@@ -1,12 +1,25 @@
 from fastapi.testclient import TestClient
 from main import app
+from app.users import create_user, get_user
+import pytest
 
 client = TestClient(app)
+
+# Test user credentials
+TEST_USERNAME = "testuser"
+TEST_PASSWORD = "testpassword123"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_test_user():
+    """Create test user before running tests"""
+    if not get_user(TEST_USERNAME):
+        create_user(TEST_USERNAME, TEST_PASSWORD)
 
 
 def get_auth_token():
     """Get JWT token for testing"""
-    response = client.post("/auth/login", json={"password": "admin"})
+    response = client.post("/auth/login", json={"username": TEST_USERNAME, "password": TEST_PASSWORD})
     assert response.status_code == 200
     return response.json()["access_token"]
 
@@ -32,16 +45,44 @@ def test_health():
 
 def test_login():
     """Test login endpoint"""
-    response = client.post("/auth/login", json={"password": "admin"})
+    response = client.post("/auth/login", json={"username": TEST_USERNAME, "password": TEST_PASSWORD})
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
+    assert "refresh_token" in data
     assert data["token_type"] == "bearer"
 
 
-def test_login_invalid():
+def test_login_invalid_password():
     """Test login with invalid password"""
-    response = client.post("/auth/login", json={"password": "wrong"})
+    response = client.post("/auth/login", json={"username": TEST_USERNAME, "password": "wrong"})
+    assert response.status_code == 401
+
+
+def test_login_invalid_username():
+    """Test login with invalid username"""
+    response = client.post("/auth/login", json={"username": "nonexistent", "password": TEST_PASSWORD})
+    assert response.status_code == 401
+
+
+def test_refresh_token():
+    """Test refresh token endpoint"""
+    # Get tokens from login
+    login_response = client.post("/auth/login", json={"username": TEST_USERNAME, "password": TEST_PASSWORD})
+    refresh_token = login_response.json()["refresh_token"]
+
+    # Use refresh token to get new access token
+    response = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["token_type"] == "bearer"
+
+
+def test_refresh_token_invalid():
+    """Test refresh with invalid token"""
+    response = client.post("/auth/refresh", json={"refresh_token": "invalid-token"})
     assert response.status_code == 401
 
 
@@ -80,7 +121,7 @@ def test_create_post_unauthorized():
         "tags": ["test"]
     }
     response = client.post("/posts", json=new_post)
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_create_post():
@@ -106,7 +147,7 @@ def test_update_post_unauthorized():
     """Test updating post without authentication"""
     update_data = {"title": "Updated Title"}
     response = client.put("/posts/welcome-to-my-blog", json=update_data)
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_update_post():
@@ -126,7 +167,7 @@ def test_update_post():
 def test_delete_post_unauthorized():
     """Test deleting post without authentication"""
     response = client.delete("/posts/welcome-to-my-blog")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_delete_post():
