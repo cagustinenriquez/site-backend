@@ -11,6 +11,7 @@ import os
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Password hashing
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -21,11 +22,13 @@ security = HTTPBearer()
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
 
 
 class TokenData(BaseModel):
     sub: Optional[str] = None
+    token_type: Optional[str] = "access"
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -41,21 +44,34 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create JWT access token"""
     to_encode = data.copy()
+    to_encode["token_type"] = "access"
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-def verify_token(token: str) -> Optional[str]:
-    """Verify JWT token and return subject"""
+def create_refresh_token(data: dict) -> str:
+    """Create JWT refresh token (longer expiry)"""
+    to_encode = data.copy()
+    to_encode["token_type"] = "refresh"
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def verify_token(token: str, token_type: str = "access") -> Optional[str]:
+    """Verify JWT token and return subject. Validates token type."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        if username is None:
+        token_type_claim: str = payload.get("token_type", "access")
+
+        if username is None or token_type_claim != token_type:
             return None
         return username
     except JWTError:

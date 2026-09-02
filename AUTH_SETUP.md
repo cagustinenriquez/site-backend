@@ -57,16 +57,42 @@ curl -X POST http://localhost:8000/auth/login \
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer"
 }
 ```
 
-### Use Token in Subsequent Requests
+- **access_token**: Use for API requests (expires in 30 minutes)
+- **refresh_token**: Use to get new access token (expires in 7 days)
+
+### Use Access Token in Requests
 
 ```bash
 curl -X GET http://localhost:8000/posts \
   -H "Authorization: Bearer <access_token>"
 ```
+
+### Refresh Access Token (No Re-login Needed)
+
+When your access token expires (after 30 minutes), use the refresh token to get a new one:
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "your-refresh-token"}'
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+You can repeat this process for up to 7 days without re-entering your password.
 
 ## Migration from Old System
 

@@ -49,6 +49,7 @@ def test_login():
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
+    assert "refresh_token" in data
     assert data["token_type"] == "bearer"
 
 
@@ -61,6 +62,27 @@ def test_login_invalid_password():
 def test_login_invalid_username():
     """Test login with invalid username"""
     response = client.post("/auth/login", json={"username": "nonexistent", "password": TEST_PASSWORD})
+    assert response.status_code == 401
+
+
+def test_refresh_token():
+    """Test refresh token endpoint"""
+    # Get tokens from login
+    login_response = client.post("/auth/login", json={"username": TEST_USERNAME, "password": TEST_PASSWORD})
+    refresh_token = login_response.json()["refresh_token"]
+
+    # Use refresh token to get new access token
+    response = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["token_type"] == "bearer"
+
+
+def test_refresh_token_invalid():
+    """Test refresh with invalid token"""
+    response = client.post("/auth/refresh", json={"refresh_token": "invalid-token"})
     assert response.status_code == 401
 
 
