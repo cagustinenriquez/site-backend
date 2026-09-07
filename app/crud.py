@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
@@ -33,7 +34,12 @@ def _save_posts(posts: dict):
 
 def _generate_slug(title: str) -> str:
     """Generate URL-friendly slug from title"""
-    return title.lower().replace(" ", "-").replace(".", "").replace(",", "")
+    slug = title.lower()
+    slug = re.sub(r'[^\w\s-]', '', slug)
+    slug = re.sub(r'[\s_]+', '-', slug)
+    slug = re.sub(r'-+', '-', slug)
+    slug = slug.strip('-')
+    return slug
 
 
 def get_post(slug: str) -> Optional[Post]:

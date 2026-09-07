@@ -10,5 +10,16 @@
       "intro"
     ],
     "date": "2026-08-28T00:00:00"
+  },
+  "test-post-2024-important": {
+    "title": "Test: Post @2024 (Important!)",
+    "content": "Content with special chars in title",
+    "excerpt": "Content with special chars in title",
+    "tags": [
+      "test"
+    ],
+    "id": "2",
+    "slug": "test-post-2024-important",
+    "date": "2026-09-07T09:58:38.574575"
   }
 }

@@ -197,3 +197,46 @@ def test_delete_post():
     # Verify it's deleted
     get_response = client.get(f"/posts/{slug}")
     assert get_response.status_code == 404
+
+
+def test_create_post_with_special_characters():
+    """Test creating a post with special characters in title"""
+    token = get_auth_token()
+    new_post = {
+        "title": 'Post with "quotes" and special chars!',
+        "content": "This post has special characters",
+        "tags": ["special"]
+    }
+    response = client.post(
+        "/posts",
+        json=new_post,
+        headers=get_auth_headers(token)
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["title"] == 'Post with "quotes" and special chars!'
+    assert data["slug"] == "post-with-quotes-and-special-chars"
+
+
+def test_get_post_with_special_char_slug():
+    """Test retrieving a post with special characters sanitized in slug"""
+    token = get_auth_token()
+
+    # Create post with special characters
+    new_post = {
+        "title": "Test: Post @2024 (Important!)",
+        "content": "Content with special chars in title",
+        "tags": ["test"]
+    }
+    create_response = client.post(
+        "/posts",
+        json=new_post,
+        headers=get_auth_headers(token)
+    )
+    assert create_response.status_code == 200
+    slug = create_response.json()["slug"]
+
+    # Retrieve it using the sanitized slug
+    response = client.get(f"/posts/{slug}")
+    assert response.status_code == 200
+    assert response.json()["slug"] == slug
