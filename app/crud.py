@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import unicodedata
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
@@ -35,6 +36,7 @@ def _save_posts(posts: dict):
 def _generate_slug(title: str) -> str:
     """Generate URL-friendly slug from title"""
     slug = title.lower()
+    slug = unicodedata.normalize('NFKD', slug).encode('ascii', 'ignore').decode('ascii')
     slug = re.sub(r'[^\w\s-]', '', slug)
     slug = re.sub(r'[\s_]+', '-', slug)
     slug = re.sub(r'-+', '-', slug)

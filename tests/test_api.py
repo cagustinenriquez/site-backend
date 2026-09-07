@@ -256,3 +256,24 @@ def test_get_post_with_special_char_slug():
     response = client.get(f"/posts/{slug}")
     assert response.status_code == 200
     assert response.json()["slug"] == slug
+
+
+def test_create_post_with_accented_characters():
+    """Test creating a post with accented characters (tildes) in title"""
+    token = get_auth_token()
+    new_post = {
+        "title": "Command Query Separation: Por qué tus métodos no deberían hacer dos cosas a la vez",
+        "content": "Content about CQS in Spanish",
+        "tags": ["spanish", "cqs"]
+    }
+    response = client.post(
+        "/posts",
+        json=new_post,
+        headers=get_auth_headers(token)
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "é" not in data["slug"]
+    assert "á" not in data["slug"]
+    assert "í" not in data["slug"]
+    assert data["slug"] == "command-query-separation-por-que-tus-metodos-no-deberian-hacer-dos-cosas-a-la-vez"
