@@ -107,9 +107,25 @@ def test_get_post():
     assert data["title"] == "Welcome to My Blog"
 
 
+def test_get_post_by_id():
+    """Test get post by ID endpoint"""
+    response = client.get("/posts/id/1")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == "1"
+    assert data["slug"] == "welcome-to-my-blog"
+    assert data["title"] == "Welcome to My Blog"
+
+
 def test_get_post_not_found():
     """Test getting non-existent post"""
     response = client.get("/posts/non-existent")
+    assert response.status_code == 404
+
+
+def test_get_post_by_id_not_found():
+    """Test getting non-existent post by ID"""
+    response = client.get("/posts/id/9999")
     assert response.status_code == 404
 
 

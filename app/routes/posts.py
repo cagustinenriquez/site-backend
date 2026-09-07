@@ -24,6 +24,15 @@ async def list_posts(
     )
 
 
+@router.get("/id/{post_id}", response_model=Post)
+async def get_post_by_id(post_id: str):
+    """Get a single blog post by ID"""
+    post = crud.get_post_by_id(post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+
 @router.get("/{slug}", response_model=Post)
 async def get_post(slug: str):
     """Get a single blog post by slug"""

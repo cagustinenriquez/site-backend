@@ -51,6 +51,15 @@ def get_post(slug: str) -> Optional[Post]:
     return Post(**post_data)
 
 
+def get_post_by_id(post_id: str) -> Optional[Post]:
+    """Get a single post by ID"""
+    posts = _load_posts()
+    for post_data in posts.values():
+        if post_data.get("id") == post_id:
+            return Post(**post_data)
+    return None
+
+
 def list_posts(
     page: int = 1,
     limit: int = 10,
