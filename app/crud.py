@@ -36,6 +36,15 @@ def _generate_slug(title: str) -> str:
     return title.lower().replace(" ", "-").replace(".", "").replace(",", "")
 
 
+def _next_id(posts: dict) -> str:
+    """Next numeric id: one more than the highest existing id.
+
+    Using len(posts) + 1 would reuse ids after a post is deleted.
+    """
+    ids = [int(p["id"]) for p in posts.values() if str(p.get("id", "")).isdigit()]
+    return str(max(ids, default=0) + 1)
+
+
 def get_post(slug: str) -> Optional[Post]:
     """Get a single post by slug"""
     posts = _load_posts()
@@ -82,7 +91,7 @@ def create_post(post: PostCreate) -> Post:
         counter += 1
 
     new_post = Post(
-        id=str(len(posts) + 1),
+        id=_next_id(posts),
         slug=slug,
         title=post.title,
         content=post.content,
