@@ -1,16 +1,23 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# The project folder. .env and the default SQLite file are found relative to
+# it, not to the current directory: on PythonAnywhere the WSGI process runs from
+# your home folder, so a plain ".env" would never be found.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
-    """App settings, read from environment variables or a .env file."""
+    """App settings, read from environment variables or the project's .env file."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=PROJECT_ROOT / ".env", extra="ignore")
 
     app_name: str = "agustinenriquez.dev API"
     app_version: str = "1.0.0"
     debug: bool = True
     # Supabase/Postgres URL in production; local SQLite file by default
-    database_url: str = "sqlite:///./data/app.db"
+    database_url: str = f"sqlite:///{PROJECT_ROOT / 'data' / 'app.db'}"
 
     # Authentication
     secret_key: str = "your-secret-key-change-this-in-production"

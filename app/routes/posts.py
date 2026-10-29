@@ -27,6 +27,15 @@ def list_posts(
     )
 
 
+@router.get("/id/{post_id}", response_model=Post)
+def get_post_by_id(post_id: str, db: Session = Depends(get_db)):
+    """Get a single blog post by id"""
+    post = crud.get_post_by_id(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+
 @router.get("/{slug}", response_model=Post)
 def get_post(slug: str, db: Session = Depends(get_db)):
     """Get a single blog post by slug"""

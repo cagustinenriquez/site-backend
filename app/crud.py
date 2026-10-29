@@ -1,4 +1,6 @@
 """Blog post storage (posts table)."""
+import re
+import unicodedata
 from datetime import datetime
 from typing import List, Optional
 
@@ -22,8 +24,17 @@ def _to_post(row: PostRow) -> Post:
 
 
 def _generate_slug(title: str) -> str:
-    """Generate URL-friendly slug from title"""
-    return title.lower().replace(" ", "-").replace(".", "").replace(",", "")
+    """URL-friendly slug: lowercase ASCII words joined by hyphens.
+
+    Accents are dropped ("Por qué" -> "por-que") and other punctuation is
+    removed ("Test: Post @2024 (Important!)" -> "test-post-2024-important").
+    """
+    slug = unicodedata.normalize("NFKD", title.lower()).encode("ascii", "ignore").decode("ascii")
+    slug = re.sub(r"[^\w\s-]", "", slug)
+    slug = re.sub(r"[\s_]+", "-", slug)
+    slug = re.sub(r"-+", "-", slug).strip("-")
+    # A title with no letters or digits (e.g. only emoji) still needs a slug
+    return slug or "post"
 
 
 def _get_row(db: Session, slug: str) -> Optional[PostRow]:
@@ -33,6 +44,14 @@ def _get_row(db: Session, slug: str) -> Optional[PostRow]:
 def get_post(db: Session, slug: str) -> Optional[Post]:
     """Get a single post by slug"""
     row = _get_row(db, slug)
+    return _to_post(row) if row else None
+
+
+def get_post_by_id(db: Session, post_id: str) -> Optional[Post]:
+    """Get a single post by its id"""
+    if not post_id.isdigit():
+        return None
+    row = db.get(PostRow, int(post_id))
     return _to_post(row) if row else None
 
 
