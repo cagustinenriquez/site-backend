@@ -26,6 +26,8 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY --chown=app:app main.py ./
 COPY --chown=app:app app ./app
+# Admin scripts, e.g. docker compose exec api python scripts/create_user.py
+COPY --chown=app:app scripts ./scripts
 # Seed data; mount a volume at /app/data to persist posts
 COPY --chown=app:app data ./data
 
