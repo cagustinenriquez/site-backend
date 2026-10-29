@@ -55,6 +55,12 @@ pip install -r requirements.txt
 python main.py
 ```
 
+**Using Docker:**
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
 Access the API at `http://localhost:8000` and docs at `http://localhost:8000/docs`
 
 ## License

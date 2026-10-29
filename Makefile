@@ -1,4 +1,4 @@
-.PHONY: check-uv help install install-dev run test clean lint format setup init-data
+.PHONY: check-uv docker-build docker-run docker-up docker-down docker-logs help install install-dev run test clean lint format setup init-data
 
 help:
 	@echo "Site Backend - Available Commands"
@@ -17,6 +17,13 @@ help:
 	@echo "Data & Database:"
 	@echo "  make init-data      - Initialize sample data"
 	@echo "  make clean-data     - Clear data/posts.json"
+	@echo ""
+	@echo "Docker:"
+	@echo "  make docker-up      - Build and start with docker compose"
+	@echo "  make docker-down    - Stop docker compose services"
+	@echo "  make docker-logs    - Follow container logs"
+	@echo "  make docker-build   - Build the image only"
+	@echo "  make docker-run     - Run the image with docker run"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean          - Remove cache, .pyc, virtual env artifacts"
@@ -112,8 +119,18 @@ docker-build:
 	@echo "Building Docker image..."
 	docker build -t site-backend:latest .
 
-docker-run:
-	@echo "Running in Docker..."
-	docker run -p 8000:8000 site-backend:latest
+docker-run: create-env
+	@echo "Running in Docker at http://localhost:8000 ..."
+	docker run --rm -p 8000:8000 --env-file .env -v site-backend-data:/app/data site-backend:latest
+
+docker-up: create-env
+	docker compose up -d --build
+	@echo "✅ Running at http://localhost:8000 (logs: make docker-logs)"
+
+docker-down:
+	docker compose down
+
+docker-logs:
+	docker compose logs -f api
 
 .DEFAULT_GOAL := help

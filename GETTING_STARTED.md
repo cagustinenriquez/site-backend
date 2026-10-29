@@ -88,6 +88,28 @@ Watch mode:
 pytest --watch
 ```
 
+## Running with Docker
+
+Requires Docker with the Compose plugin.
+
+```bash
+cp .env.example .env     # set SECRET_KEY and ADMIN_PASSWORD
+make docker-up           # or: docker compose up -d --build
+```
+
+The API runs at http://localhost:8000. Posts are stored in the `posts-data`
+volume, so they survive container restarts and rebuilds. On first start the
+volume is seeded from `data/posts.json`.
+
+```bash
+make docker-logs         # follow logs
+make docker-down         # stop (data is kept)
+docker compose down -v   # stop and delete the posts volume
+```
+
+The image installs only runtime dependencies from `uv.lock` and runs as a
+non-root user. `.env` is never copied into the image; it's passed at runtime.
+
 ## Project Structure
 
 ```
