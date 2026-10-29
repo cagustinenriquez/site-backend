@@ -3,8 +3,8 @@
 ## Prerequisites
 
 - Python 3.10+
-- pip or [uv](https://docs.astral.sh/uv/) (Python package manager)
-- Virtual environment (recommended)
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
+  - Install uv: `curl -LsSf https://astral.sh/uv/install.sh | sh` (Windows: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`)
 
 ## Installation
 
@@ -14,43 +14,33 @@
    cd site-backend
    ```
 
-2. **Create and activate a virtual environment**
+2. **Install dependencies**
+
+   Using uv (recommended):
+   ```bash
+   uv sync            # app + dev dependencies (pytest, httpx)
+   uv sync --no-dev   # app dependencies only
+   ```
+   This creates `.venv/` and installs the exact versions pinned in `uv.lock`,
+   using the Python version from `.python-version` (uv downloads it if needed).
+   Prefix commands with `uv run` (e.g. `uv run pytest`) instead of activating the venv.
 
    Using pip:
    ```bash
    python -m venv venv
-   ```
-
-   Using uv (faster):
-   ```bash
-   uv venv
-   ```
-
-   Activate it:
-   - **Windows**: `venv\Scripts\activate`
-   - **macOS/Linux**: `source venv/bin/activate`
-
-3. **Install dependencies**
-
-   Using pip:
-   ```bash
+   source venv/bin/activate   # Windows: venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
-   Using uv (recommended - faster):
+3. **Adding or updating dependencies** (uv)
    ```bash
-   uv pip install -r requirements.txt
+   uv add <package>          # runtime dependency
+   uv add --dev <package>    # dev-only dependency
+   uv lock --upgrade         # upgrade all within constraints
    ```
-
-   Or with `pyproject.toml`:
-   ```bash
-   uv pip install -e .
-   ```
-
-   Install with dev dependencies:
-   ```bash
-   uv pip install -e ".[dev]"
-   ```
+   Commit both `pyproject.toml` and `uv.lock`. If you change dependencies,
+   regenerate `requirements.txt` for pip users:
+   `uv export --no-hashes --no-emit-project -o requirements.txt`
 
 4. **Environment Setup**
    
@@ -72,12 +62,12 @@
 ### Start the development server
 
 ```bash
-python main.py
+uv run python main.py   # or: python main.py (with venv activated)
 ```
 
 Or using uvicorn directly:
 ```bash
-uvicorn main:app --reload
+uv run uvicorn main:app --reload
 ```
 
 The server will start at `http://localhost:8000` with automatic reload enabled.
@@ -90,7 +80,7 @@ The server will start at `http://localhost:8000` with automatic reload enabled.
 ### Run tests
 
 ```bash
-pytest
+uv run pytest   # or: make test
 ```
 
 Watch mode:
@@ -134,7 +124,7 @@ source venv/bin/activate
 ### ModuleNotFoundError
 Ensure all dependencies are installed:
 ```bash
-pip install -r requirements.txt
+uv sync   # or: pip install -r requirements.txt
 ```
 
 ## Next Steps

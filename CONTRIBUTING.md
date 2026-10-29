@@ -12,7 +12,7 @@ Thanks for your interest in contributing! This document provides guidelines for 
 ## Development Workflow
 
 1. Make your changes
-2. Ensure tests pass: `npm test`
+2. Ensure tests pass: `uv run pytest` (or `make test`)
 3. Commit your changes with a clear message
 4. Push to your fork
 5. Submit a pull request to the main repository
@@ -31,11 +31,11 @@ Thanks for your interest in contributing! This document provides guidelines for 
 - Aim for meaningful test coverage
 
 ```bash
-# Run tests
-npm test
+# Install dev dependencies
+uv sync
 
-# Run with coverage
-npm run test:coverage
+# Run tests
+uv run pytest
 ```
 
 ## Commit Messages
