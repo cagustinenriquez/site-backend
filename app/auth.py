@@ -5,15 +5,17 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 import secrets
 from app.config import settings
+from app.db import get_db
 
 SECRET_KEY = settings.secret_key
 ALGORITHM = settings.algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 REFRESH_TOKEN_EXPIRE_DAYS = settings.refresh_token_expire_days
 
-# Password hashing for users in data/users.json
+# Password hashing for users in the users table
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 # Security scheme
@@ -84,14 +86,17 @@ def verify_token(token: str, token_type: str = "access") -> Optional[str]:
         return None
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> str:
     """Dependency to verify JWT token from Authorization header"""
     # Imported here because app.users imports from this module
     from app.users import user_exists
 
     token = credentials.credentials
     username = verify_token(token)
-    if username is None or not user_exists(username):
+    if username is None or not user_exists(db, username):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",

@@ -1,53 +1,88 @@
 import os
 
 # Fixed settings for tests. Set before the app is imported so a developer's
-# .env (e.g. a real ADMIN_PASSWORD or disabled rate limits) can't change them.
+# .env (e.g. a real ADMIN_PASSWORD, disabled rate limits or a Supabase
+# DATABASE_URL) can't change them or be written to.
 ADMIN_PASSWORD = "test-password"
 os.environ.update({
     "ADMIN_PASSWORD": ADMIN_PASSWORD,
     "SECRET_KEY": "test-secret-key",
+    "DATABASE_URL": "sqlite://",
     "RATE_LIMIT_ENABLED": "true",
     "RATE_LIMIT_DEFAULT": "100/minute",
     "RATE_LIMIT_LOGIN": "5/minute",
 })
 
-import json  # noqa: E402
+from datetime import datetime  # noqa: E402
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
 
-from app import crud, recruiters, users  # noqa: E402
+from app import db_models  # noqa: E402
+from app.db import Base, create_db_engine, get_db  # noqa: E402
 from app.limiter import limiter  # noqa: E402
 from main import app  # noqa: E402
 
-SEED_POSTS = {
-    "welcome-to-my-blog": {
-        "id": "1",
-        "slug": "welcome-to-my-blog",
-        "title": "Welcome to My Blog",
-        "content": "This is the first blog post.",
-        "excerpt": "Welcome to the blog",
-        "tags": ["welcome", "intro"],
-        "date": "2026-08-28T00:00:00",
-    }
-}
+# Optional: run the suite against a real Postgres, e.g.
+#   TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test uv run pytest
+# Its tables are dropped and recreated for every test, so never point it at real data.
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
+
+
+def _make_engine():
+    if TEST_DATABASE_URL:
+        return create_db_engine(TEST_DATABASE_URL)
+    # One shared in-memory SQLite connection, usable from FastAPI's threadpool
+    return create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+
+
+@pytest.fixture(scope="session")
+def engine():
+    engine = _make_engine()
+    yield engine
+    engine.dispose()
 
 
 @pytest.fixture(autouse=True)
-def posts_file(tmp_path, monkeypatch):
-    """Point the app at a fresh posts file per test, never data/posts.json"""
-    path = tmp_path / "posts.json"
-    path.write_text(json.dumps(SEED_POSTS))
-    monkeypatch.setattr(crud, "DATA_DIR", tmp_path)
-    monkeypatch.setattr(crud, "POSTS_FILE", path)
-    return path
+def session_factory(engine):
+    """Fresh tables with one seed post for every test"""
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+    with factory() as db:
+        db.add(db_models.PostRow(
+            slug="welcome-to-my-blog",
+            title="Welcome to My Blog",
+            content="This is the first blog post.",
+            excerpt="Welcome to the blog",
+            tags=["welcome", "intro"],
+            date=datetime(2026, 8, 28),
+        ))
+        db.commit()
+
+    def override_get_db():
+        with factory() as db:
+            yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+    yield factory
+    app.dependency_overrides.pop(get_db, None)
+    Base.metadata.drop_all(engine)
 
 
-@pytest.fixture(autouse=True)
-def other_data_files(tmp_path, monkeypatch):
-    """Keep users and recruiters in the per-test temp dir too"""
-    monkeypatch.setattr(users, "USERS_FILE", tmp_path / "users.json")
-    monkeypatch.setattr(recruiters, "RECRUITERS_FILE", tmp_path / "recruiters.json")
+@pytest.fixture
+def db(session_factory):
+    """A session on the test database, for setting up data directly"""
+    with session_factory() as session:
+        yield session
 
 
 @pytest.fixture(autouse=True)

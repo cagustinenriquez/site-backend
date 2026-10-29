@@ -9,11 +9,12 @@ class Settings(BaseSettings):
     app_name: str = "agustinenriquez.dev API"
     app_version: str = "1.0.0"
     debug: bool = True
-    database_url: str = "sqlite:///./blog.db"
+    # Supabase/Postgres URL in production; local SQLite file by default
+    database_url: str = "sqlite:///./data/app.db"
 
     # Authentication
     secret_key: str = "your-secret-key-change-this-in-production"
-    # Used only while data/users.json has no users (see app/users.py)
+    # Used only while the users table is empty (see app/users.py)
     admin_password: str = "admin"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30

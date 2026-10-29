@@ -1,95 +1,92 @@
-"""File-based storage for recruiters (data/recruiters.json), keyed by id."""
-import json
+"""Recruiter storage (recruiters table)."""
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional
 
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session
+
+from app.db_models import RecruiterRow
 from app.models import Recruiter, RecruiterCreate, RecruiterSort, RecruiterUpdate
 
-RECRUITERS_FILE = Path("data") / "recruiters.json"
+
+def _to_recruiter(row: RecruiterRow) -> Recruiter:
+    return Recruiter(
+        id=str(row.id),
+        name=row.name,
+        company=row.company,
+        email=row.email,
+        phone=row.phone,
+        linkedin=row.linkedin,
+        notes=row.notes,
+        reputation=row.reputation,
+        total_placements=row.total_placements,
+        average_rating=row.average_rating,
+        created_at=row.created_at,
+        updated_at=row.updated_at,
+    )
 
 
-def _load() -> dict:
-    if not RECRUITERS_FILE.exists():
-        return {}
-    with open(RECRUITERS_FILE, "r") as f:
-        return json.load(f)
+def _get_row(db: Session, recruiter_id: str) -> Optional[RecruiterRow]:
+    if not recruiter_id.isdigit():
+        return None
+    return db.get(RecruiterRow, int(recruiter_id))
 
 
-def _save(recruiters: dict):
-    RECRUITERS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(RECRUITERS_FILE, "w") as f:
-        json.dump(recruiters, f, indent=2)
-
-
-def _next_id(recruiters: dict) -> str:
-    ids = [int(k) for k in recruiters if k.isdigit()]
-    return str(max(ids, default=0) + 1)
-
-
-def get_recruiter(recruiter_id: str) -> Optional[Recruiter]:
-    data = _load().get(recruiter_id)
-    return Recruiter(**data) if data else None
+def get_recruiter(db: Session, recruiter_id: str) -> Optional[Recruiter]:
+    row = _get_row(db, recruiter_id)
+    return _to_recruiter(row) if row else None
 
 
 def list_recruiters(
+    db: Session,
     page: int = 1,
     limit: int = 10,
     sort: RecruiterSort = "reputation",
     search: Optional[str] = None,
 ) -> tuple[List[Recruiter], int]:
-    recruiters = [Recruiter(**data) for data in _load().values()]
-
+    query = select(RecruiterRow)
     if search:
-        term = search.lower()
-        recruiters = [
-            r for r in recruiters
-            if term in r.name.lower() or term in r.company.lower()
-        ]
+        term = f"%{search}%"
+        query = query.where(or_(RecruiterRow.name.ilike(term), RecruiterRow.company.ilike(term)))
 
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+
+    by_name = func.lower(RecruiterRow.name)
     if sort == "name":
-        recruiters.sort(key=lambda r: r.name.lower())
+        query = query.order_by(by_name, RecruiterRow.id)
     else:
         # Highest first; ties broken by name so paging is stable
-        recruiters.sort(key=lambda r: r.name.lower())
-        recruiters.sort(key=lambda r: getattr(r, sort), reverse=True)
+        query = query.order_by(getattr(RecruiterRow, sort).desc(), by_name, RecruiterRow.id)
 
-    total = len(recruiters)
-    start = (page - 1) * limit
-    return recruiters[start:start + limit], total
+    rows = db.scalars(query.offset((page - 1) * limit).limit(limit)).all()
+    return [_to_recruiter(row) for row in rows], total
 
 
-def create_recruiter(payload: RecruiterCreate) -> Recruiter:
-    recruiters = _load()
+def create_recruiter(db: Session, payload: RecruiterCreate) -> Recruiter:
     now = datetime.now()
-    recruiter = Recruiter(
-        id=_next_id(recruiters),
-        created_at=now,
-        updated_at=now,
-        **payload.model_dump(),
-    )
-    recruiters[recruiter.id] = recruiter.model_dump(mode="json")
-    _save(recruiters)
-    return recruiter
+    row = RecruiterRow(**payload.model_dump(), created_at=now, updated_at=now)
+    db.add(row)
+    db.commit()
+    return _to_recruiter(row)
 
 
-def update_recruiter(recruiter_id: str, payload: RecruiterUpdate) -> Optional[Recruiter]:
-    recruiters = _load()
-    if recruiter_id not in recruiters:
+def update_recruiter(
+    db: Session, recruiter_id: str, payload: RecruiterUpdate
+) -> Optional[Recruiter]:
+    row = _get_row(db, recruiter_id)
+    if not row:
         return None
-    data = recruiters[recruiter_id]
-    data.update(payload.model_dump(exclude_none=True))
-    data["updated_at"] = datetime.now().isoformat()
-    recruiter = Recruiter(**data)
-    recruiters[recruiter_id] = recruiter.model_dump(mode="json")
-    _save(recruiters)
-    return recruiter
+    for field, value in payload.model_dump(exclude_none=True).items():
+        setattr(row, field, value)
+    row.updated_at = datetime.now()
+    db.commit()
+    return _to_recruiter(row)
 
 
-def delete_recruiter(recruiter_id: str) -> bool:
-    recruiters = _load()
-    if recruiter_id not in recruiters:
+def delete_recruiter(db: Session, recruiter_id: str) -> bool:
+    row = _get_row(db, recruiter_id)
+    if not row:
         return False
-    del recruiters[recruiter_id]
-    _save(recruiters)
+    db.delete(row)
+    db.commit()
     return True

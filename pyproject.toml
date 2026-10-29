@@ -22,6 +22,7 @@ dependencies = [
     "passlib[bcrypt]==1.7.4",
     "slowapi==0.1.10",
     "argon2-cffi>=23.1.0",
+    "psycopg[binary]==3.3.6",
 ]
 
 [dependency-groups]
