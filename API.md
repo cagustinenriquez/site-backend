@@ -104,7 +104,10 @@ List all blog posts
 }
 ```
 
-#### GET /posts/:slug
+#### GET /posts/id/{id}
+Get a single post by its numeric id. `404` if not found.
+
+#### GET /posts/{slug}
 Get a single blog post
 
 **Response:**
