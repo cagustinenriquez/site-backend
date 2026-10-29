@@ -1,13 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 from app.auth import (
     create_access_token,
-    verify_password,
+    verify_admin_password,
     Token,
-    ADMIN_PASSWORD,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from datetime import timedelta
+from app.config import settings
+from app.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -17,7 +18,8 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login", response_model=Token)
-async def login(request: LoginRequest):
+@limiter.limit(settings.rate_limit_login)
+async def login(request: Request, credentials: LoginRequest):
     """
     Login endpoint - returns JWT token for authentication.
 
@@ -26,13 +28,11 @@ async def login(request: LoginRequest):
     Authorization: Bearer <token>
     ```
     """
-    if not verify_password(request.password, ADMIN_PASSWORD):
-        # Simple check - in production, hash the password in config
-        if request.password != ADMIN_PASSWORD:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials",
-            )
+    if not verify_admin_password(credentials.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

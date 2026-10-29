@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from app.limiter import limiter
 from app.routes import posts, auth
 
 app = FastAPI(
@@ -10,6 +14,11 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Rate limiting: default limit on every route, 429 when exceeded
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Configure CORS
 app.add_middleware(
@@ -26,6 +35,7 @@ app.include_router(posts.router)
 
 
 @app.get("/health")
+@limiter.exempt
 async def health():
     """Health check endpoint"""
     return JSONResponse({"status": "ok"})
