@@ -1,0 +1,15 @@
+services:
+  api:
+    build: .
+    image: site-backend:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - posts-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  posts-data:
