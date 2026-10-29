@@ -13,9 +13,11 @@ class Settings(BaseSettings):
 
     # Authentication
     secret_key: str = "your-secret-key-change-this-in-production"
+    # Used only while data/users.json has no users (see app/users.py)
     admin_password: str = "admin"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
 
     # Rate limiting (per client IP)
     rate_limit_enabled: bool = True
