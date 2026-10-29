@@ -97,9 +97,10 @@ cp .env.example .env     # set SECRET_KEY and ADMIN_PASSWORD
 make docker-up           # or: docker compose up -d --build
 ```
 
-The API runs at http://localhost:8000. Posts are stored in the `posts-data`
-volume, so they survive container restarts and rebuilds. On first start the
-volume is seeded from `data/posts.json`.
+The API runs at http://localhost:8000. On startup the container applies database
+migrations (`alembic upgrade head`) and then starts the API. Data is stored
+wherever `DATABASE_URL` points (see [Database](#database-supabase)). Without it,
+a SQLite file in the `posts-data` volume is used.
 
 ```bash
 make docker-logs         # follow logs
@@ -110,9 +111,8 @@ docker compose down -v   # stop and delete the posts volume
 The image installs only runtime dependencies from `uv.lock` and runs as a
 non-root user. `.env` is never copied into the image; it's passed at runtime.
 
-**Creating a user:** users are saved in the `posts-data` volume, so create them
-inside the running container. Once a user exists, `admin` + `ADMIN_PASSWORD`
-stops working:
+**Creating a user:** run the script inside the running container, so it uses the
+same `DATABASE_URL`. Once a user exists, `admin` + `ADMIN_PASSWORD` stops working:
 
 ```bash
 docker compose exec api python scripts/create_user.py <username> <password>
@@ -125,6 +125,53 @@ the container is only reachable through the proxy) to `.env`:
 
 ```bash
 FORWARDED_ALLOW_IPS=*
+```
+
+## Database (Supabase)
+
+All data (posts, users, recruiters) lives in a SQL database set by
+`DATABASE_URL`. Locally it defaults to a SQLite file (`data/app.db`). In
+production it's Supabase's Postgres.
+
+1. **Get the connection string:** in the Supabase dashboard, open your project,
+   click **Connect**, and copy the **Session pooler** URI. It looks like:
+   ```
+   postgresql://postgres.<project-ref>:<db-password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+   ```
+   Use the session pooler rather than the "Direct connection": the direct host
+   is IPv6-only on most plans, and Docker usually has no IPv6. Replace
+   `[YOUR-PASSWORD]` with your database password (Project Settings → Database
+   → reset it there if you don't know it). If the password has special
+   characters such as `@`, `:` or `/`, URL-encode them.
+
+2. **Put it in `.env`** as `DATABASE_URL=...`. It's a secret, so never commit it.
+
+3. **Create the tables:**
+   ```bash
+   make migrate                 # or: uv run alembic upgrade head
+   ```
+   The Docker container also does this on every start. The migration turns on
+   Row Level Security for every table, so Supabase's public REST API (the
+   `anon` key) can't read or write them. Only this backend can.
+
+4. **Import the old JSON data** (optional, safe to run more than once):
+   ```bash
+   make import-data             # reads data/posts.json, users.json, recruiters.json
+   # In Docker, where users.json lives in the posts-data volume:
+   docker compose exec api python scripts/import_json_data.py
+   ```
+
+**Changing tables:** edit `app/db_models.py`, then generate and check a migration:
+```bash
+uv run alembic revision --autogenerate -m "describe the change"
+```
+`tests/test_db.py` fails if the models and migrations don't match.
+
+**Tests** use an in-memory SQLite database and never touch `DATABASE_URL`. To
+run them against Postgres, point `TEST_DATABASE_URL` at a throwaway database.
+Its tables are wiped, so never use Supabase for this:
+```bash
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test uv run pytest
 ```
 
 ## Project Structure

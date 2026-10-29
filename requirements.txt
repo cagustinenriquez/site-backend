@@ -13,6 +13,9 @@ passlib[bcrypt]==1.7.4
 argon2-cffi>=23.1.0
 slowapi==0.1.10
 
+# Database
+psycopg[binary]==3.3.6
+
 # Development dependencies
 pytest==7.4.3
 httpx==0.25.2

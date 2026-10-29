@@ -28,7 +28,11 @@ COPY --chown=app:app main.py ./
 COPY --chown=app:app app ./app
 # Admin scripts, e.g. docker compose exec api python scripts/create_user.py
 COPY --chown=app:app scripts ./scripts
-# Seed data; mount a volume at /app/data to persist posts
+# Database migrations, applied on startup
+COPY --chown=app:app alembic.ini ./
+COPY --chown=app:app alembic ./alembic
+# Old JSON data for scripts/import_json_data.py, and the local SQLite
+# database when DATABASE_URL isn't set (mount a volume at /app/data)
 COPY --chown=app:app data ./data
 
 ENV PATH="/app/.venv/bin:$PATH" \
@@ -41,4 +45,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Bring the database schema up to date, then start the API
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn main:app --host 0.0.0.0 --port 8000"]

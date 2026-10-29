@@ -1,12 +1,13 @@
-import json
-from pathlib import Path
+"""User accounts (users table)."""
 from typing import Optional
 
 from pydantic import BaseModel
+from sqlalchemy import exists, select
+from sqlalchemy.orm import Session
 
 from app.auth import get_password_hash, verify_admin_password, verify_password
+from app.db_models import UserRow
 
-USERS_FILE = Path("data") / "users.json"
 FALLBACK_USERNAME = "admin"
 
 
@@ -15,61 +16,58 @@ class User(BaseModel):
     hashed_password: str
 
 
-def _load_users() -> dict:
-    if not USERS_FILE.exists():
-        return {}
-    with open(USERS_FILE, "r") as f:
-        return json.load(f)
+def _has_users(db: Session) -> bool:
+    return db.scalar(select(exists().select_from(UserRow)))
 
 
-def _save_users(users: dict):
-    USERS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(USERS_FILE, "w") as f:
-        json.dump(users, f, indent=2)
+def get_user(db: Session, username: str) -> Optional[User]:
+    row = db.get(UserRow, username)
+    return User(username=row.username, hashed_password=row.hashed_password) if row else None
 
 
-def get_user(username: str) -> Optional[User]:
-    user_data = _load_users().get(username)
-    return User(**user_data) if user_data else None
-
-
-def user_exists(username: str) -> bool:
+def user_exists(db: Session, username: str) -> bool:
     """Whether tokens for this username should still be accepted.
 
-    While there are no users, only the "admin" fallback exists. Once
-    users.json has users, "admin" (fallback) tokens and tokens for removed
+    While there are no users, only the "admin" fallback exists. Once the
+    users table has users, "admin" (fallback) tokens and tokens for removed
     users stop working.
     """
-    users = _load_users()
-    if not users:
+    if not _has_users(db):
         return username == FALLBACK_USERNAME
-    return username in users
+    return db.get(UserRow, username) is not None
 
 
-def authenticate_user(username: str, password: str) -> Optional[str]:
+def authenticate_user(db: Session, username: str, password: str) -> Optional[str]:
     """Return the username if the credentials are valid, else None.
 
-    Users live in data/users.json (create them with scripts/create_user.py).
-    Until that file has any users, "admin" + ADMIN_PASSWORD works instead, so
-    a fresh install or Docker container can still log in.
+    Users live in the users table (create them with scripts/create_user.py).
+    Until it has any users, "admin" + ADMIN_PASSWORD works instead, so a
+    fresh install can still log in.
     """
-    users = _load_users()
-    if not users:
+    if not _has_users(db):
         if username == FALLBACK_USERNAME and verify_admin_password(password):
             return username
         return None
 
-    user_data = users.get(username)
-    if user_data and verify_password(password, user_data["hashed_password"]):
+    row = db.get(UserRow, username)
+    if row and verify_password(password, row.hashed_password):
         return username
     return None
 
 
-def create_user(username: str, password: str) -> User:
-    users = _load_users()
-    if username in users:
+def create_user(db: Session, username: str, password: str) -> User:
+    if db.get(UserRow, username):
         raise ValueError(f"User {username} already exists")
-    user = User(username=username, hashed_password=get_password_hash(password))
-    users[username] = user.model_dump()
-    _save_users(users)
-    return user
+    row = UserRow(username=username, hashed_password=get_password_hash(password))
+    db.add(row)
+    db.commit()
+    return User(username=row.username, hashed_password=row.hashed_password)
+
+
+def delete_user(db: Session, username: str) -> bool:
+    row = db.get(UserRow, username)
+    if not row:
+        return False
+    db.delete(row)
+    db.commit()
+    return True

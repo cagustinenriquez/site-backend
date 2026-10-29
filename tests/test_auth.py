@@ -4,6 +4,7 @@ import pytest
 from jose import jwt
 
 from app.auth import ALGORITHM, create_access_token
+from app.users import create_user, delete_user
 
 
 def test_login(client, admin_password):
@@ -103,10 +104,8 @@ def test_refresh_token_cannot_be_used_for_writes(client, admin_password):
     assert response.status_code == 401
 
 
-def test_users_file_replaces_admin_password(client, admin_password):
-    from app.users import create_user
-
-    create_user("agustin", "s3cret")
+def test_users_table_replaces_admin_password(client, db, admin_password):
+    create_user(db, "agustin", "s3cret")
     ok = client.post("/auth/login", json={"username": "agustin", "password": "s3cret"})
     assert ok.status_code == 200
     # ADMIN_PASSWORD stops working once real users exist
@@ -114,19 +113,9 @@ def test_users_file_replaces_admin_password(client, admin_password):
     assert old.status_code == 401
 
 
-def _remove_user(username):
-    from app import users
-
-    data = users._load_users()
-    del data[username]
-    users._save_users(data)
-
-
-def test_fallback_admin_tokens_stop_working_once_users_exist(client, admin_password):
-    from app.users import create_user
-
+def test_fallback_admin_tokens_stop_working_once_users_exist(client, db, admin_password):
     tokens = client.post("/auth/login", json={"password": admin_password}).json()
-    create_user("agustin", "s3cret")
+    create_user(db, "agustin", "s3cret")
 
     refresh = client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert refresh.status_code == 401
@@ -137,15 +126,13 @@ def test_fallback_admin_tokens_stop_working_once_users_exist(client, admin_passw
     assert write.status_code == 401
 
 
-def test_tokens_for_removed_user_stop_working(client):
-    from app.users import create_user
-
-    create_user("agustin", "s3cret")
-    create_user("other", "pw")
+def test_tokens_for_removed_user_stop_working(client, db):
+    create_user(db, "agustin", "s3cret")
+    create_user(db, "other", "pw")
     tokens = client.post(
         "/auth/login", json={"username": "agustin", "password": "s3cret"}
     ).json()
-    _remove_user("agustin")
+    delete_user(db, "agustin")
 
     refresh = client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert refresh.status_code == 401

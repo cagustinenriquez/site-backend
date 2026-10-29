@@ -10,7 +10,8 @@ This is a FastAPI-based backend providing RESTful APIs for managing blog posts a
 
 - **FastAPI** - Modern Python web framework
 - **Uvicorn** - ASGI server
-- **SQLAlchemy** - ORM for database operations
+- **SQLAlchemy** + **Alembic** - database access and migrations
+- **Supabase (Postgres)** - production database; SQLite locally
 - **Pydantic** - Data validation
 
 ## Getting Started

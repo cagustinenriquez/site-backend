@@ -1,34 +1,24 @@
-import json
-import os
-from pathlib import Path
-from typing import List, Optional
+"""Blog post storage (posts table)."""
 from datetime import datetime
+from typing import List, Optional
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.db_models import PostRow
 from app.models import Post, PostCreate, PostUpdate
 
-DATA_DIR = Path("data")
-POSTS_FILE = DATA_DIR / "posts.json"
 
-
-def _ensure_data_dir():
-    """Ensure data directory exists"""
-    DATA_DIR.mkdir(exist_ok=True)
-
-
-def _load_posts() -> dict:
-    """Load all posts from JSON file"""
-    _ensure_data_dir()
-    if not POSTS_FILE.exists():
-        return {}
-
-    with open(POSTS_FILE, "r") as f:
-        return json.load(f)
-
-
-def _save_posts(posts: dict):
-    """Save posts to JSON file"""
-    _ensure_data_dir()
-    with open(POSTS_FILE, "w") as f:
-        json.dump(posts, f, indent=2)
+def _to_post(row: PostRow) -> Post:
+    return Post(
+        id=str(row.id),
+        slug=row.slug,
+        title=row.title,
+        content=row.content,
+        excerpt=row.excerpt,
+        tags=row.tags or [],
+        date=row.date,
+    )
 
 
 def _generate_slug(title: str) -> str:
@@ -36,109 +26,77 @@ def _generate_slug(title: str) -> str:
     return title.lower().replace(" ", "-").replace(".", "").replace(",", "")
 
 
-def _next_id(posts: dict) -> str:
-    """Next numeric id: one more than the highest existing id.
-
-    Using len(posts) + 1 would reuse ids after a post is deleted.
-    """
-    ids = [int(p["id"]) for p in posts.values() if str(p.get("id", "")).isdigit()]
-    return str(max(ids, default=0) + 1)
+def _get_row(db: Session, slug: str) -> Optional[PostRow]:
+    return db.scalar(select(PostRow).where(PostRow.slug == slug))
 
 
-def get_post(slug: str) -> Optional[Post]:
+def get_post(db: Session, slug: str) -> Optional[Post]:
     """Get a single post by slug"""
-    posts = _load_posts()
-    post_data = posts.get(slug)
-    if not post_data:
-        return None
-    return Post(**post_data)
+    row = _get_row(db, slug)
+    return _to_post(row) if row else None
 
 
 def list_posts(
+    db: Session,
     page: int = 1,
     limit: int = 10,
-    tag: Optional[str] = None
+    tag: Optional[str] = None,
 ) -> tuple[List[Post], int]:
-    """List posts with pagination and optional tag filtering"""
-    posts = _load_posts()
-    posts_list = [Post(**data) for data in posts.values()]
+    """List posts, newest first, with pagination and optional tag filtering"""
+    rows = db.scalars(select(PostRow).order_by(PostRow.date.desc(), PostRow.id.desc())).all()
+    posts = [_to_post(row) for row in rows]
 
-    # Filter by tag if provided
+    # Tags are a JSON list; filtering in Python keeps this portable across
+    # SQLite and Postgres and is fine at blog scale.
     if tag:
-        posts_list = [p for p in posts_list if tag in p.tags]
+        posts = [p for p in posts if tag in p.tags]
 
-    # Sort by date descending
-    posts_list.sort(key=lambda p: p.date, reverse=True)
-
-    total = len(posts_list)
+    total = len(posts)
     start = (page - 1) * limit
-    end = start + limit
-
-    return posts_list[start:end], total
+    return posts[start:start + limit], total
 
 
-def create_post(post: PostCreate) -> Post:
+def create_post(db: Session, post: PostCreate) -> Post:
     """Create a new post"""
-    posts = _load_posts()
-
     slug = _generate_slug(post.title)
 
     # Handle slug conflicts
     counter = 1
     original_slug = slug
-    while slug in posts:
+    while _get_row(db, slug):
         slug = f"{original_slug}-{counter}"
         counter += 1
 
-    new_post = Post(
-        id=_next_id(posts),
+    row = PostRow(
         slug=slug,
         title=post.title,
         content=post.content,
         excerpt=post.excerpt or post.content[:100],
         tags=post.tags,
-        date=datetime.now()
+        date=datetime.now(),
     )
-
-    posts[slug] = new_post.model_dump(mode="json")
-    _save_posts(posts)
-
-    return new_post
+    db.add(row)
+    db.commit()
+    return _to_post(row)
 
 
-def update_post(slug: str, post_update: PostUpdate) -> Optional[Post]:
-    """Update an existing post"""
-    posts = _load_posts()
-
-    if slug not in posts:
+def update_post(db: Session, slug: str, post_update: PostUpdate) -> Optional[Post]:
+    """Update an existing post; only fields that are sent are changed"""
+    row = _get_row(db, slug)
+    if not row:
         return None
 
-    post_data = posts[slug]
-
-    # Update only provided fields
-    if post_update.title is not None:
-        post_data["title"] = post_update.title
-    if post_update.content is not None:
-        post_data["content"] = post_update.content
-    if post_update.excerpt is not None:
-        post_data["excerpt"] = post_update.excerpt
-    if post_update.tags is not None:
-        post_data["tags"] = post_update.tags
-
-    posts[slug] = post_data
-    _save_posts(posts)
-
-    return Post(**post_data)
+    for field, value in post_update.model_dump(exclude_none=True).items():
+        setattr(row, field, value)
+    db.commit()
+    return _to_post(row)
 
 
-def delete_post(slug: str) -> bool:
+def delete_post(db: Session, slug: str) -> bool:
     """Delete a post by slug"""
-    posts = _load_posts()
-
-    if slug not in posts:
+    row = _get_row(db, slug)
+    if not row:
         return False
-
-    del posts[slug]
-    _save_posts(posts)
-
+    db.delete(row)
+    db.commit()
     return True

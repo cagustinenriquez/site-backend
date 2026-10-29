@@ -32,7 +32,7 @@ curl -X POST http://localhost:8000/posts \
   -d '{"title": "New Post", "content": "..."}'
 ```
 
-Access tokens expire after 30 minutes; get a new one from `POST /auth/refresh` with the refresh token (valid 7 days). Reading blog posts doesn't require authentication; everything else does, including reading recruiters. Tokens stop working if their user is removed, and `admin` fallback tokens stop working once `data/users.json` has users.
+Access tokens expire after 30 minutes; get a new one from `POST /auth/refresh` with the refresh token (valid 7 days). Reading blog posts doesn't require authentication; everything else does, including reading recruiters. Tokens stop working if their user is removed, and `admin` fallback tokens stop working once the `users` table has users.
 
 ## Endpoints
 
@@ -49,8 +49,8 @@ Get JWT access and refresh tokens
 }
 ```
 
-Users are stored (argon2-hashed) in `data/users.json`; add one with
-`uv run python scripts/create_user.py <username> <password>`. While that file
+Users are stored (argon2-hashed) in the database's `users` table; add one with
+`uv run python scripts/create_user.py <username> <password>`. While that table
 has no users, `admin` + `ADMIN_PASSWORD` is accepted instead. `username`
 defaults to `admin` if omitted.
 

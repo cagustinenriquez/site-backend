@@ -68,10 +68,11 @@ def test_delete_does_not_reuse_ids(client, auth_headers, add_recruiter):
     add_recruiter("A")
     second = add_recruiter("B")
     assert client.delete(f"/recruiters/{second['id']}", headers=auth_headers).status_code == 200
-    assert add_recruiter("C")["id"] == "2"
+    # Deleted ids are never handed out again, even the highest one
+    assert add_recruiter("C")["id"] == "3"
     first_gone = client.delete("/recruiters/1", headers=auth_headers)
     assert first_gone.status_code == 200
-    assert add_recruiter("D")["id"] == "3"
+    assert add_recruiter("D")["id"] == "4"
 
 
 @pytest.mark.parametrize("method,url,body", [

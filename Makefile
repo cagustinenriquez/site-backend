@@ -1,4 +1,4 @@
-.PHONY: check-uv docker-build docker-run docker-up docker-down docker-logs help install install-dev run test clean lint format setup init-data
+.PHONY: migrate import-data check-uv docker-build docker-run docker-up docker-down docker-logs help install install-dev run test clean lint format setup init-data
 
 help:
 	@echo "Site Backend - Available Commands"
@@ -15,6 +15,8 @@ help:
 	@echo "  make format         - Format code with black/isort"
 	@echo ""
 	@echo "Data & Database:"
+	@echo "  make migrate        - Create/update database tables (alembic upgrade head)"
+	@echo "  make import-data    - Copy data/*.json into the database"
 	@echo "  make init-data      - Initialize sample data"
 	@echo "  make clean-data     - Clear data/posts.json"
 	@echo ""
@@ -32,7 +34,7 @@ help:
 check-uv:
 	@command -v uv >/dev/null 2>&1 || { echo "❌ uv not found. Install it: curl -LsSf https://astral.sh/uv/install.sh | sh"; exit 1; }
 
-setup: create-env install-dev init-data
+setup: create-env install-dev migrate
 	@echo ""
 	@echo "✅ Setup complete!"
 	@echo "Run 'make run' to start the server"
@@ -59,6 +61,14 @@ run:
 	@echo "Starting development server at http://localhost:8000"
 	@echo "API docs available at http://localhost:8000/docs"
 	uv run python main.py
+
+migrate:
+	@echo "Applying database migrations..."
+	uv run alembic upgrade head
+
+import-data:
+	@echo "Importing data/*.json into the database..."
+	uv run python scripts/import_json_data.py
 
 test:
 	@echo "Running tests..."
