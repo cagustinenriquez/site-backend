@@ -15,7 +15,7 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.db import SessionLocal
+from app.db import open_db
 from app.users import create_user, get_user
 
 
@@ -27,7 +27,7 @@ def main():
     username = sys.argv[1]
     password = sys.argv[2]
 
-    with SessionLocal() as db:
+    with open_db() as db:
         if get_user(db, username):
             print(f"Error: User '{username}' already exists")
             sys.exit(1)

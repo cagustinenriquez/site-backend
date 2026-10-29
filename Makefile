@@ -1,4 +1,4 @@
-.PHONY: migrate import-data check-uv docker-build docker-run docker-up docker-down docker-logs help install install-dev run test clean lint format setup init-data
+.PHONY: test-pg test-rest migrate import-data check-uv docker-build docker-run docker-up docker-down docker-logs help install install-dev run test clean lint format setup init-data
 
 help:
 	@echo "Site Backend - Available Commands"
@@ -73,6 +73,15 @@ import-data:
 test:
 	@echo "Running tests..."
 	uv run pytest -v
+
+test-pg:
+	@echo "Running tests against Postgres (docker compose -f docker-compose.test.yml up -d first)..."
+	TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:55432/test uv run pytest
+
+test-rest:
+	@echo "Running tests through the Supabase REST backend (docker compose -f docker-compose.test.yml up -d first)..."
+	TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:55432/test \
+	TEST_POSTGREST_URL=http://localhost:53000 uv run pytest
 
 test-watch:
 	@echo "Running tests in watch mode..."

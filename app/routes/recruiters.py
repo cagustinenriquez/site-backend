@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from app.storage import Database
 
 from app import recruiters as store
 from app.auth import get_current_user
@@ -24,7 +24,7 @@ def list_recruiters(
     sort: RecruiterSort = "reputation",
     search: Optional[str] = None,
     current_user: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """List recruiters, sorted (highest first) and optionally searched by name or company (requires authentication)"""
     recruiters, total = store.list_recruiters(db, page=page, limit=limit, sort=sort, search=search)
@@ -35,7 +35,7 @@ def list_recruiters(
 def get_recruiter(
     recruiter_id: str,
     current_user: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Get one recruiter (requires authentication)"""
     recruiter = store.get_recruiter(db, recruiter_id)
@@ -48,7 +48,7 @@ def get_recruiter(
 def create_recruiter(
     payload: RecruiterCreate,
     current_user: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Add a recruiter (requires authentication)"""
     return store.create_recruiter(db, payload)
@@ -59,7 +59,7 @@ def update_recruiter(
     recruiter_id: str,
     payload: RecruiterUpdate,
     current_user: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Update a recruiter (requires authentication)"""
     recruiter = store.update_recruiter(db, recruiter_id, payload)
@@ -72,7 +72,7 @@ def update_recruiter(
 def delete_recruiter(
     recruiter_id: str,
     current_user: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Database = Depends(get_db),
 ):
     """Delete a recruiter (requires authentication)"""
     if not store.delete_recruiter(db, recruiter_id):

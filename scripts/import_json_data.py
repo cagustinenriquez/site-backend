@@ -9,7 +9,8 @@ Reads posts.json, users.json and recruiters.json if present. Rows that
 were already imported (same post slug, username, or recruiter name +
 company + created_at) are skipped, so it's safe to run more than once.
 Old ids are kept when free; otherwise the database assigns a new one.
-Run `alembic upgrade head` first.
+Run `alembic upgrade head` first. Needs a direct DATABASE_URL connection;
+it won't run with SUPABASE_URL/SUPABASE_KEY.
 """
 
 import json
@@ -22,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import func, select, text  # noqa: E402
 
+from app.config import settings  # noqa: E402
 from app.db import SessionLocal  # noqa: E402
 from app.db_models import PostRow, RecruiterRow, UserRow  # noqa: E402
 
@@ -146,6 +148,15 @@ def run_import(db, data_dir: Path) -> dict:
 
 
 def main():
+    if settings.use_supabase_rest:
+        # Keeping old ids needs a direct connection (to move the id sequences),
+        # and without this check the import would go to the local SQLite file.
+        print(
+            "This script needs a direct database connection (DATABASE_URL), but\n"
+            "SUPABASE_URL/SUPABASE_KEY are set. Run it from a machine that can reach\n"
+            "the database, with only DATABASE_URL set."
+        )
+        sys.exit(1)
     data_dir = Path(sys.argv[1] if len(sys.argv) > 1 else "data")
     with SessionLocal() as db:
         counts = run_import(db, data_dir)

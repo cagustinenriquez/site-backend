@@ -1,4 +1,11 @@
-"""Database connection: one engine per process, one session per request."""
+"""Data access: a direct database connection, or Supabase's REST API.
+
+get_db() hands routes either a SQLAlchemy session (DATABASE_URL) or the
+Supabase REST client (SUPABASE_URL + SUPABASE_KEY); app/storage.py makes
+both look the same to the stores.
+"""
+import threading
+from contextlib import contextmanager
 from typing import Iterator
 
 from sqlalchemy import create_engine
@@ -41,10 +48,35 @@ engine = create_db_engine(settings.database_url)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
-def get_db() -> Iterator[Session]:
-    """FastAPI dependency: a session for the length of one request"""
+_rest_client = None
+_rest_lock = threading.Lock()
+
+
+def get_rest_client():
+    """The process-wide Supabase REST client (it reuses connections)"""
+    from app.storage import SupabaseRest
+
+    global _rest_client
+    with _rest_lock:
+        if _rest_client is None:
+            _rest_client = SupabaseRest(settings.supabase_url, settings.supabase_key)
+        return _rest_client
+
+
+@contextmanager
+def open_db() -> Iterator:
+    """The configured backend, for scripts: a session or the REST client"""
+    if settings.use_supabase_rest:
+        yield get_rest_client()
+        return
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+
+
+def get_db() -> Iterator:
+    """FastAPI dependency: the data backend for one request"""
+    with open_db() as db:
+        yield db

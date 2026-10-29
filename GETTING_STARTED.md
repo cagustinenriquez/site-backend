@@ -129,9 +129,19 @@ FORWARDED_ALLOW_IPS=*
 
 ## Database (Supabase)
 
-All data (posts, users, recruiters) lives in a SQL database set by
-`DATABASE_URL`. Locally it defaults to a SQLite file (`data/app.db`). In
-production it's Supabase's Postgres.
+All data (posts, users, recruiters) lives in a SQL database. The app reaches
+it one of two ways:
+
+- **`DATABASE_URL`**: a direct database connection. Locally it defaults to a
+  SQLite file (`data/app.db`). In Docker or on a paid host it's Supabase's
+  Postgres.
+- **`SUPABASE_URL` + `SUPABASE_KEY`**: Supabase's REST API over HTTPS, for hosts
+  that block database connections, such as PythonAnywhere's free plan. See
+  [Deploying to PythonAnywhere](#deploying-to-pythonanywhere). When both are set,
+  this wins over `DATABASE_URL`.
+
+Migrations and the JSON import always need a direct `DATABASE_URL`
+connection, so run them from your own machine.
 
 1. **Get the connection string:** in the Supabase dashboard, open your project,
    click **Connect**, and copy the **Session pooler** URI. It looks like:
@@ -167,12 +177,61 @@ uv run alembic revision --autogenerate -m "describe the change"
 ```
 `tests/test_db.py` fails if the models and migrations don't match.
 
-**Tests** use an in-memory SQLite database and never touch `DATABASE_URL`. To
-run them against Postgres, point `TEST_DATABASE_URL` at a throwaway database.
-Its tables are wiped, so never use Supabase for this:
+**Tests** use an in-memory SQLite database and never touch `DATABASE_URL` or
+Supabase. To also run them against Postgres and through the Supabase REST
+backend, start a local Postgres + PostgREST (the server behind Supabase's REST
+API). Their tables are wiped by the tests:
 ```bash
-TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test uv run pytest
+docker compose -f docker-compose.test.yml up -d
+make test-pg      # direct Postgres connection
+make test-rest    # Supabase REST backend
+docker compose -f docker-compose.test.yml down -v
 ```
+
+## Deploying to PythonAnywhere
+
+Free accounts can't open database connections, but they can reach
+`*.supabase.co` over HTTPS, so the app uses Supabase's REST API there.
+
+1. **Get the API key:** in Supabase, open **Project Settings → API Keys** and
+   copy the **secret** key (`sb_secret_...`), or the legacy `service_role`
+   key. It bypasses Row Level Security, so it must only live on the server.
+
+2. **Get the code and a Python 3.10 virtualenv** in a PythonAnywhere Bash
+   console. The pinned packages don't install on Python 3.13:
+   ```bash
+   cd ~/site-backend && git fetch && git checkout main && git pull
+   mkvirtualenv --python=python3.10 site-backend
+   pip install -r requirements.txt
+   ```
+
+3. **Create `~/site-backend/.env`** with at least:
+   ```
+   SUPABASE_URL=https://<project-ref>.supabase.co
+   SUPABASE_KEY=sb_secret_...
+   SECRET_KEY=<long random string>
+   ```
+   `.env` is read from the project folder, whatever directory the app runs from.
+
+4. **Web tab:**
+   - Python version **3.10**.
+   - Virtualenv `/home/<username>/.virtualenvs/site-backend`.
+   - Replace the WSGI configuration file's contents with:
+     ```python
+     import sys
+     sys.path.insert(0, "/home/<username>/site-backend")
+     from wsgi import application  # noqa
+     ```
+
+   Then click **Reload**.
+
+5. **Check it:** `https://<username>.pythonanywhere.com/health` should return
+   `{"status": "ok"}`, and `/posts` should list your posts from Supabase.
+
+Tables are created and changed from your own machine (`make migrate` with
+`DATABASE_URL`). To add a user on PythonAnywhere, run
+`python scripts/create_user.py <username> <password>` in the project folder,
+with the virtualenv active.
 
 ## Project Structure
 

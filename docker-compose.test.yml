@@ -1,0 +1,35 @@
+# Postgres + PostgREST (the server behind Supabase's REST API), for running
+# the test suite through the Supabase REST backend:
+#
+#   docker compose -f docker-compose.test.yml up -d
+#   make test-rest
+#   docker compose -f docker-compose.test.yml down -v
+name: site-backend-test
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: test
+    ports:
+      - "55432:5432"
+    volumes:
+      - ./tests/postgrest/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "test"]
+      interval: 2s
+      retries: 30
+
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    environment:
+      PGRST_DB_URI: postgres://authenticator:authenticator@db:5432/test
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: test-jwt-secret-at-least-32-characters-long
+    ports:
+      - "53000:3000"
+    depends_on:
+      db:
+        condition: service_healthy

@@ -2,11 +2,10 @@
 from typing import Optional
 
 from pydantic import BaseModel
-from sqlalchemy import exists, select
-from sqlalchemy.orm import Session
 
 from app.auth import get_password_hash, verify_admin_password, verify_password
 from app.db_models import UserRow
+from app.storage import Database, table
 
 FALLBACK_USERNAME = "admin"
 
@@ -16,58 +15,53 @@ class User(BaseModel):
     hashed_password: str
 
 
-def _has_users(db: Session) -> bool:
-    return db.scalar(select(exists().select_from(UserRow)))
+def _users(db: Database):
+    return table(db, UserRow)
 
 
-def get_user(db: Session, username: str) -> Optional[User]:
-    row = db.get(UserRow, username)
-    return User(username=row.username, hashed_password=row.hashed_password) if row else None
+def get_user(db: Database, username: str) -> Optional[User]:
+    row = _users(db).get(username=username)
+    return User(**row) if row else None
 
 
-def user_exists(db: Session, username: str) -> bool:
+def user_exists(db: Database, username: str) -> bool:
     """Whether tokens for this username should still be accepted.
 
     While there are no users, only the "admin" fallback exists. Once the
     users table has users, "admin" (fallback) tokens and tokens for removed
     users stop working.
     """
-    if not _has_users(db):
+    if not _users(db).exists():
         return username == FALLBACK_USERNAME
-    return db.get(UserRow, username) is not None
+    return get_user(db, username) is not None
 
 
-def authenticate_user(db: Session, username: str, password: str) -> Optional[str]:
+def authenticate_user(db: Database, username: str, password: str) -> Optional[str]:
     """Return the username if the credentials are valid, else None.
 
     Users live in the users table (create them with scripts/create_user.py).
     Until it has any users, "admin" + ADMIN_PASSWORD works instead, so a
     fresh install can still log in.
     """
-    if not _has_users(db):
+    if not _users(db).exists():
         if username == FALLBACK_USERNAME and verify_admin_password(password):
             return username
         return None
 
-    row = db.get(UserRow, username)
-    if row and verify_password(password, row.hashed_password):
+    user = get_user(db, username)
+    if user and verify_password(password, user.hashed_password):
         return username
     return None
 
 
-def create_user(db: Session, username: str, password: str) -> User:
-    if db.get(UserRow, username):
+def create_user(db: Database, username: str, password: str) -> User:
+    if get_user(db, username):
         raise ValueError(f"User {username} already exists")
-    row = UserRow(username=username, hashed_password=get_password_hash(password))
-    db.add(row)
-    db.commit()
-    return User(username=row.username, hashed_password=row.hashed_password)
+    row = _users(db).insert(
+        {"username": username, "hashed_password": get_password_hash(password)}
+    )
+    return User(**row)
 
 
-def delete_user(db: Session, username: str) -> bool:
-    row = db.get(UserRow, username)
-    if not row:
-        return False
-    db.delete(row)
-    db.commit()
-    return True
+def delete_user(db: Database, username: str) -> bool:
+    return _users(db).delete(username=username)
