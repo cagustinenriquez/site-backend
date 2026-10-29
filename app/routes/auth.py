@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from app.storage import Database
 
 from app.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -42,7 +42,7 @@ def _issue_tokens(username: str) -> dict:
 @router.post("/login", response_model=Token)
 @limiter.limit(settings.rate_limit_login)
 def login(
-    request: Request, credentials: LoginRequest, db: Session = Depends(get_db)
+    request: Request, credentials: LoginRequest, db: Database = Depends(get_db)
 ):
     """
     Login with username and password. Returns:
@@ -61,7 +61,7 @@ def login(
 @router.post("/refresh", response_model=Token)
 @limiter.limit(settings.rate_limit_login)
 def refresh(
-    request: Request, body: RefreshRequest, db: Session = Depends(get_db)
+    request: Request, body: RefreshRequest, db: Database = Depends(get_db)
 ):
     """Swap a valid refresh token for a new access token and refresh token"""
     username = verify_token(body.refresh_token, token_type="refresh")

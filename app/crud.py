@@ -4,22 +4,24 @@ import unicodedata
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from app.db_models import PostRow
 from app.models import Post, PostCreate, PostUpdate
+from app.storage import Database, table
 
 
-def _to_post(row: PostRow) -> Post:
+def _posts(db: Database):
+    return table(db, PostRow)
+
+
+def _to_post(row: dict) -> Post:
     return Post(
-        id=str(row.id),
-        slug=row.slug,
-        title=row.title,
-        content=row.content,
-        excerpt=row.excerpt,
-        tags=row.tags or [],
-        date=row.date,
+        id=str(row["id"]),
+        slug=row["slug"],
+        title=row["title"],
+        content=row["content"],
+        excerpt=row["excerpt"],
+        tags=row["tags"] or [],
+        date=row["date"],
     )
 
 
@@ -37,36 +39,31 @@ def _generate_slug(title: str) -> str:
     return slug or "post"
 
 
-def _get_row(db: Session, slug: str) -> Optional[PostRow]:
-    return db.scalar(select(PostRow).where(PostRow.slug == slug))
-
-
-def get_post(db: Session, slug: str) -> Optional[Post]:
+def get_post(db: Database, slug: str) -> Optional[Post]:
     """Get a single post by slug"""
-    row = _get_row(db, slug)
+    row = _posts(db).get(slug=slug)
     return _to_post(row) if row else None
 
 
-def get_post_by_id(db: Session, post_id: str) -> Optional[Post]:
+def get_post_by_id(db: Database, post_id: str) -> Optional[Post]:
     """Get a single post by its id"""
     if not post_id.isdigit():
         return None
-    row = db.get(PostRow, int(post_id))
+    row = _posts(db).get(id=int(post_id))
     return _to_post(row) if row else None
 
 
 def list_posts(
-    db: Session,
+    db: Database,
     page: int = 1,
     limit: int = 10,
     tag: Optional[str] = None,
 ) -> tuple[List[Post], int]:
     """List posts, newest first, with pagination and optional tag filtering"""
-    rows = db.scalars(select(PostRow).order_by(PostRow.date.desc(), PostRow.id.desc())).all()
-    posts = [_to_post(row) for row in rows]
-
-    # Tags are a JSON list; filtering in Python keeps this portable across
-    # SQLite and Postgres and is fine at blog scale.
+    posts = [_to_post(row) for row in _posts(db).all()]
+    # Sorting, filtering and paging happen here rather than in the database so
+    # both backends behave the same; fine at blog scale.
+    posts.sort(key=lambda p: (p.date, int(p.id)), reverse=True)
     if tag:
         posts = [p for p in posts if tag in p.tags]
 
@@ -75,47 +72,35 @@ def list_posts(
     return posts[start:start + limit], total
 
 
-def create_post(db: Session, post: PostCreate) -> Post:
+def create_post(db: Database, post: PostCreate) -> Post:
     """Create a new post"""
+    posts = _posts(db)
     slug = _generate_slug(post.title)
 
     # Handle slug conflicts
     counter = 1
     original_slug = slug
-    while _get_row(db, slug):
+    while posts.get(slug=slug):
         slug = f"{original_slug}-{counter}"
         counter += 1
 
-    row = PostRow(
-        slug=slug,
-        title=post.title,
-        content=post.content,
-        excerpt=post.excerpt or post.content[:100],
-        tags=post.tags,
-        date=datetime.now(),
-    )
-    db.add(row)
-    db.commit()
+    row = posts.insert({
+        "slug": slug,
+        "title": post.title,
+        "content": post.content,
+        "excerpt": post.excerpt or post.content[:100],
+        "tags": post.tags,
+        "date": datetime.now(),
+    })
     return _to_post(row)
 
 
-def update_post(db: Session, slug: str, post_update: PostUpdate) -> Optional[Post]:
+def update_post(db: Database, slug: str, post_update: PostUpdate) -> Optional[Post]:
     """Update an existing post; only fields that are sent are changed"""
-    row = _get_row(db, slug)
-    if not row:
-        return None
-
-    for field, value in post_update.model_dump(exclude_none=True).items():
-        setattr(row, field, value)
-    db.commit()
-    return _to_post(row)
+    row = _posts(db).update(post_update.model_dump(exclude_none=True), slug=slug)
+    return _to_post(row) if row else None
 
 
-def delete_post(db: Session, slug: str) -> bool:
+def delete_post(db: Database, slug: str) -> bool:
     """Delete a post by slug"""
-    row = _get_row(db, slug)
-    if not row:
-        return False
-    db.delete(row)
-    db.commit()
-    return True
+    return _posts(db).delete(slug=slug)
