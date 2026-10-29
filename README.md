@@ -41,19 +41,17 @@ site-backend/
 
 ## Quick Start
 
+**Using [uv](https://docs.astral.sh/uv/) (recommended):**
+```bash
+uv sync              # creates .venv and installs deps from uv.lock
+uv run python main.py
+```
+
 **Using pip:**
 ```bash
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python main.py
-```
-
-**Using uv (faster):**
-```bash
-uv venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-uv pip install -e ".[dev]"
 python main.py
 ```
 

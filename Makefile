@@ -1,12 +1,12 @@
-.PHONY: help install install-dev run test clean lint format setup init-data
+.PHONY: check-uv help install install-dev run test clean lint format setup init-data
 
 help:
 	@echo "Site Backend - Available Commands"
 	@echo ""
 	@echo "Setup & Installation:"
 	@echo "  make setup          - Complete setup (clone, install, generate .env)"
-	@echo "  make install        - Install production dependencies"
-	@echo "  make install-dev    - Install with dev dependencies (testing, linting)"
+	@echo "  make install        - Install production dependencies (uv sync --no-dev)"
+	@echo "  make install-dev    - Install with dev dependencies (uv sync)"
 	@echo ""
 	@echo "Development:"
 	@echo "  make run            - Run development server with auto-reload"
@@ -22,7 +22,10 @@ help:
 	@echo "  make clean          - Remove cache, .pyc, virtual env artifacts"
 	@echo "  make clean-all      - Full clean including .env"
 
-setup: create-env install init-data
+check-uv:
+	@command -v uv >/dev/null 2>&1 || { echo "❌ uv not found. Install it: curl -LsSf https://astral.sh/uv/install.sh | sh"; exit 1; }
+
+setup: create-env install-dev init-data
 	@echo ""
 	@echo "✅ Setup complete!"
 	@echo "Run 'make run' to start the server"
@@ -35,45 +38,45 @@ create-env:
 		echo "ℹ️  .env already exists"; \
 	fi
 
-install:
+install: check-uv
 	@echo "Installing dependencies..."
-	pip install -r requirements.txt
+	uv sync --no-dev
 	@echo "✅ Dependencies installed"
 
-install-dev:
+install-dev: check-uv
 	@echo "Installing development dependencies..."
-	pip install -e ".[dev]"
+	uv sync
 	@echo "✅ Dev dependencies installed"
 
 run:
 	@echo "Starting development server at http://localhost:8000"
 	@echo "API docs available at http://localhost:8000/docs"
-	python main.py
+	uv run python main.py
 
 test:
 	@echo "Running tests..."
-	pytest -v
+	uv run pytest -v
 
 test-watch:
 	@echo "Running tests in watch mode..."
-	pytest -v --tb=short -k "test_" --looponfail
+	uv run pytest -v --tb=short -k "test_" --looponfail
 
 lint:
 	@echo "Linting code..."
-	-ruff check .
-	-flake8 app/ tests/ --max-line-length=100
+	-uv run ruff check .
+	-uv run flake8 app/ tests/ --max-line-length=100
 
 format:
 	@echo "Formatting code..."
-	black app/ tests/ main.py
-	isort app/ tests/ main.py
+	uv run black app/ tests/ main.py
+	uv run isort app/ tests/ main.py
 
 init-data:
 	@if [ ! -d data ]; then \
 		mkdir -p data; \
 	fi
 	@if [ ! -f data/posts.json ]; then \
-		python -c "import json; json.dump({'welcome-to-my-blog': {'id': '1', 'slug': 'welcome-to-my-blog', 'title': 'Welcome to My Blog', 'content': 'This is the first blog post on agustinenriquez.dev.', 'excerpt': 'Welcome to agustinenriquez.dev blog', 'tags': ['welcome', 'intro'], 'date': '2026-08-28T00:00:00'}}, open('data/posts.json', 'w'), indent=2)"; \
+		uv run python -c "import json; json.dump({'welcome-to-my-blog': {'id': '1', 'slug': 'welcome-to-my-blog', 'title': 'Welcome to My Blog', 'content': 'This is the first blog post on agustinenriquez.dev.', 'excerpt': 'Welcome to agustinenriquez.dev blog', 'tags': ['welcome', 'intro'], 'date': '2026-08-28T00:00:00'}}, open('data/posts.json', 'w'), indent=2)"; \
 		echo "✅ Sample data initialized"; \
 	else \
 		echo "ℹ️  data/posts.json already exists"; \
@@ -102,7 +105,7 @@ clean-all: clean
 
 install-lint-tools:
 	@echo "Installing linting tools..."
-	pip install ruff flake8 black isort
+	uv add --dev ruff flake8 black isort
 	@echo "✅ Lint tools installed"
 
 docker-build:
