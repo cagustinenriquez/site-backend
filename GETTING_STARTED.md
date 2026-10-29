@@ -110,6 +110,14 @@ docker compose down -v   # stop and delete the posts volume
 The image installs only runtime dependencies from `uv.lock` and runs as a
 non-root user. `.env` is never copied into the image; it's passed at runtime.
 
+**Creating a user:** users are saved in the `posts-data` volume, so create them
+inside the running container. Once a user exists, `admin` + `ADMIN_PASSWORD`
+stops working:
+
+```bash
+docker compose exec api python scripts/create_user.py <username> <password>
+```
+
 **Behind a reverse proxy** (nginx, Traefik, Cloudflare, ...): rate limits are
 per client IP, so uvicorn must trust the proxy's `X-Forwarded-For` header or
 every request will appear to come from the proxy. Add the proxy's IP (or `*` if
