@@ -1,3 +1,6 @@
+import pytest
+
+
 # --- Reading ---
 
 def test_list_posts(client):
@@ -126,3 +129,43 @@ def test_delete_post(client, auth_headers):
 
 def test_delete_post_not_found(client, auth_headers):
     assert client.delete("/posts/nope", headers=auth_headers).status_code == 404
+
+
+# --- Slugs (ported from the dev branch) ---
+
+def test_slug_strips_special_characters(create_post):
+    post = create_post(title='Post with "quotes" and special chars!')
+    assert post["slug"] == "post-with-quotes-and-special-chars"
+
+
+def test_slug_with_symbols_is_retrievable(client, create_post):
+    slug = create_post(title="Test: Post @2024 (Important!)")["slug"]
+    assert slug == "test-post-2024-important"
+    assert client.get(f"/posts/{slug}").json()["slug"] == slug
+
+
+def test_slug_drops_accents(create_post):
+    post = create_post(
+        title="Command Query Separation: Por qué tus métodos no deberían hacer dos cosas a la vez"
+    )
+    assert post["slug"] == (
+        "command-query-separation-por-que-tus-metodos-no-deberian-hacer-dos-cosas-a-la-vez"
+    )
+
+
+def test_slug_for_title_without_letters(create_post):
+    assert create_post(title="🚀🚀")["slug"] == "post"
+    assert create_post(title="!!!")["slug"] == "post-1"
+
+
+# --- Get by id (ported from the dev branch) ---
+
+def test_get_post_by_id(client):
+    response = client.get("/posts/id/1")
+    assert response.status_code == 200
+    assert response.json()["slug"] == "welcome-to-my-blog"
+
+
+@pytest.mark.parametrize("post_id", ["9999", "abc"])
+def test_get_post_by_id_not_found(client, post_id):
+    assert client.get(f"/posts/id/{post_id}").status_code == 404
