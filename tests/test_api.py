@@ -156,3 +156,25 @@ def test_delete_post():
     # Verify it's deleted
     get_response = client.get(f"/posts/{slug}")
     assert get_response.status_code == 404
+
+
+def test_login_rate_limited():
+    """Login allows 5 attempts per minute, then returns 429"""
+    for _ in range(5):
+        response = client.post("/auth/login", json={"password": "wrong"})
+        assert response.status_code == 401
+    response = client.post("/auth/login", json={"password": "admin"})
+    assert response.status_code == 429
+
+
+def test_default_rate_limit():
+    """Other routes allow 100 requests per minute, then return 429"""
+    for _ in range(100):
+        assert client.get("/").status_code == 200
+    assert client.get("/").status_code == 429
+
+
+def test_health_not_rate_limited():
+    """Health checks are exempt from rate limiting"""
+    for _ in range(110):
+        assert client.get("/health").status_code == 200

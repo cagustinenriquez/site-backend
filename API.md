@@ -196,7 +196,23 @@ All error responses follow this format:
 
 ## Rate Limiting
 
-API requests are limited to 100 requests per minute per IP address.
+Requests are rate limited per client IP address:
+
+| Endpoint | Limit |
+|---|---|
+| `POST /auth/login` | 5 requests per minute |
+| `GET /health` | Not limited |
+| All other endpoints | 100 requests per minute |
+
+When a limit is exceeded the API returns `429 Too Many Requests`:
+
+```json
+{"error": "Rate limit exceeded: 5 per 1 minute"}
+```
+
+Limits are configurable with the `RATE_LIMIT_ENABLED`, `RATE_LIMIT_DEFAULT` and
+`RATE_LIMIT_LOGIN` environment variables (see `.env.example`). Counters are kept
+in memory, so each server process tracks its own limits.
 
 ## Versioning
 
