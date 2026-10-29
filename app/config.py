@@ -17,5 +17,10 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 
+    # Rate limiting (per client IP)
+    rate_limit_enabled: bool = True
+    rate_limit_default: str = "100/minute"
+    rate_limit_login: str = "5/minute"
+
 
 settings = Settings()
