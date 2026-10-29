@@ -91,7 +91,7 @@ def create_post(post: PostCreate) -> Post:
         date=datetime.now()
     )
 
-    posts[slug] = new_post.model_dump()
+    posts[slug] = new_post.model_dump(mode="json")
     _save_posts(posts)
 
     return new_post

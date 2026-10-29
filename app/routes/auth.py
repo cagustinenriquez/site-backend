@@ -2,9 +2,8 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
 from app.auth import (
     create_access_token,
-    verify_password,
+    verify_admin_password,
     Token,
-    ADMIN_PASSWORD,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 from datetime import timedelta
@@ -26,13 +25,11 @@ async def login(request: LoginRequest):
     Authorization: Bearer <token>
     ```
     """
-    if not verify_password(request.password, ADMIN_PASSWORD):
-        # Simple check - in production, hash the password in config
-        if request.password != ADMIN_PASSWORD:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials",
-            )
+    if not verify_admin_password(request.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
