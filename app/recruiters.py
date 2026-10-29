@@ -2,91 +2,78 @@
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
-
 from app.db_models import RecruiterRow
 from app.models import Recruiter, RecruiterCreate, RecruiterSort, RecruiterUpdate
+from app.storage import Database, table
 
 
-def _to_recruiter(row: RecruiterRow) -> Recruiter:
-    return Recruiter(
-        id=str(row.id),
-        name=row.name,
-        company=row.company,
-        email=row.email,
-        phone=row.phone,
-        linkedin=row.linkedin,
-        notes=row.notes,
-        reputation=row.reputation,
-        total_placements=row.total_placements,
-        average_rating=row.average_rating,
-        created_at=row.created_at,
-        updated_at=row.updated_at,
-    )
+def _recruiters(db: Database):
+    return table(db, RecruiterRow)
 
 
-def _get_row(db: Session, recruiter_id: str) -> Optional[RecruiterRow]:
+def _to_recruiter(row: dict) -> Recruiter:
+    return Recruiter(**{**row, "id": str(row["id"])})
+
+
+def get_recruiter(db: Database, recruiter_id: str) -> Optional[Recruiter]:
     if not recruiter_id.isdigit():
         return None
-    return db.get(RecruiterRow, int(recruiter_id))
-
-
-def get_recruiter(db: Session, recruiter_id: str) -> Optional[Recruiter]:
-    row = _get_row(db, recruiter_id)
+    row = _recruiters(db).get(id=int(recruiter_id))
     return _to_recruiter(row) if row else None
 
 
 def list_recruiters(
-    db: Session,
+    db: Database,
     page: int = 1,
     limit: int = 10,
     sort: RecruiterSort = "reputation",
     search: Optional[str] = None,
 ) -> tuple[List[Recruiter], int]:
-    query = select(RecruiterRow)
+    recruiters = [_to_recruiter(row) for row in _recruiters(db).all()]
+
     if search:
-        term = f"%{search}%"
-        query = query.where(or_(RecruiterRow.name.ilike(term), RecruiterRow.company.ilike(term)))
+        term = search.lower()
+        recruiters = [
+            r for r in recruiters
+            if term in r.name.lower() or term in r.company.lower()
+        ]
 
-    total = db.scalar(select(func.count()).select_from(query.subquery()))
-
-    by_name = func.lower(RecruiterRow.name)
     if sort == "name":
-        query = query.order_by(by_name, RecruiterRow.id)
+        recruiters.sort(key=lambda r: (r.name.lower(), int(r.id)))
     else:
         # Highest first; ties broken by name so paging is stable
-        query = query.order_by(getattr(RecruiterRow, sort).desc(), by_name, RecruiterRow.id)
+        recruiters.sort(key=lambda r: (-getattr(r, sort), r.name.lower(), int(r.id)))
 
-    rows = db.scalars(query.offset((page - 1) * limit).limit(limit)).all()
-    return [_to_recruiter(row) for row in rows], total
+    total = len(recruiters)
+    start = (page - 1) * limit
+    return recruiters[start:start + limit], total
 
 
-def create_recruiter(db: Session, payload: RecruiterCreate) -> Recruiter:
+def create_recruiter(db: Database, payload: RecruiterCreate) -> Recruiter:
     now = datetime.now()
-    row = RecruiterRow(**payload.model_dump(), created_at=now, updated_at=now)
-    db.add(row)
-    db.commit()
+    row = _recruiters(db).insert({
+        **payload.model_dump(),
+        # Explicit, not left to column defaults: those only exist in SQLAlchemy,
+        # so over Supabase's REST API they'd arrive as null
+        "total_placements": 0,
+        "average_rating": 0.0,
+        "created_at": now,
+        "updated_at": now,
+    })
     return _to_recruiter(row)
 
 
 def update_recruiter(
-    db: Session, recruiter_id: str, payload: RecruiterUpdate
+    db: Database, recruiter_id: str, payload: RecruiterUpdate
 ) -> Optional[Recruiter]:
-    row = _get_row(db, recruiter_id)
-    if not row:
+    if not recruiter_id.isdigit():
         return None
-    for field, value in payload.model_dump(exclude_none=True).items():
-        setattr(row, field, value)
-    row.updated_at = datetime.now()
-    db.commit()
-    return _to_recruiter(row)
+    values = {**payload.model_dump(exclude_none=True), "updated_at": datetime.now()}
+    row = _recruiters(db).update(values, id=int(recruiter_id))
+    return _to_recruiter(row) if row else None
 
 
-def delete_recruiter(db: Session, recruiter_id: str) -> bool:
-    row = _get_row(db, recruiter_id)
-    if not row:
+def delete_recruiter(db: Database, recruiter_id: str) -> bool:
+    if not recruiter_id.isdigit():
         return False
-    db.delete(row)
-    db.commit()
-    return True
+    return _recruiters(db).delete(id=int(recruiter_id))
