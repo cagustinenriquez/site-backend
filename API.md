@@ -12,13 +12,14 @@ Write operations (POST, PUT, DELETE) require JWT authentication.
 ```bash
 curl -X POST http://localhost:8000/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"password": "admin"}'
+  -d '{"username": "admin", "password": "admin"}'
 ```
 
 2. Response:
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer"
 }
 ```
@@ -31,29 +32,48 @@ curl -X POST http://localhost:8000/posts \
   -d '{"title": "New Post", "content": "..."}'
 ```
 
-Token expires after 30 minutes. GET requests (read-only) don't require authentication.
+Access tokens expire after 30 minutes; get a new one from `POST /auth/refresh` with the refresh token (valid 7 days). Reading blog posts doesn't require authentication; everything else does, including reading recruiters. Tokens stop working if their user is removed, and `admin` fallback tokens stop working once `data/users.json` has users.
 
 ## Endpoints
 
 ### Authentication
 
 #### POST /auth/login
-Get JWT access token
+Get JWT access and refresh tokens
 
 **Request Body:**
 ```json
 {
+  "username": "admin",
   "password": "admin"
 }
 ```
+
+Users are stored (argon2-hashed) in `data/users.json`; add one with
+`uv run python scripts/create_user.py <username> <password>`. While that file
+has no users, `admin` + `ADMIN_PASSWORD` is accepted instead. `username`
+defaults to `admin` if omitted.
 
 **Response:**
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer"
 }
 ```
+
+#### POST /auth/refresh
+Swap a refresh token for a new access token and refresh token. Same rate limit as login.
+
+**Request Body:**
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response:** same shape as `/auth/login`. `401` if the refresh token is invalid or expired.
 
 ### Blog Posts
 
@@ -162,6 +182,52 @@ Authorization: Bearer <access_token>
   "detail": "Post deleted successfully"
 }
 ```
+
+### Recruiters
+
+#### GET /recruiters (auth required)
+List recruiters.
+
+**Query Parameters:**
+- `page` (number, default 1), `limit` (number, default 10, max 100)
+- `sort` - `reputation` (default), `total_placements`, `average_rating` (highest first) or `name`
+- `search` - case-insensitive match on name or company
+
+**Response:**
+```json
+{
+  "recruiters": [
+    {
+      "id": "1",
+      "name": "Jane Doe",
+      "company": "Acme",
+      "email": "",
+      "phone": null,
+      "linkedin": null,
+      "notes": "Great communication",
+      "reputation": 3,
+      "total_placements": 0,
+      "average_rating": 0.0,
+      "created_at": "2026-10-28T12:00:00",
+      "updated_at": "2026-10-28T12:00:00"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 10
+}
+```
+
+#### GET /recruiters/{id} (auth required)
+Get one recruiter. `404` if not found.
+
+#### POST /recruiters (auth required)
+Body: `name` and `company` (required), plus optional `email`, `phone`, `linkedin`, `notes`, `reputation` (signed integer).
+
+#### PUT /recruiters/{id} (auth required)
+Any recruiter field, plus `total_placements` (>= 0) and `average_rating` (0-5). Only fields sent are changed.
+
+#### DELETE /recruiters/{id} (auth required)
 
 ### Health Check
 

@@ -16,7 +16,7 @@ import json  # noqa: E402
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import crud  # noqa: E402
+from app import crud, recruiters, users  # noqa: E402
 from app.limiter import limiter  # noqa: E402
 from main import app  # noqa: E402
 
@@ -41,6 +41,13 @@ def posts_file(tmp_path, monkeypatch):
     monkeypatch.setattr(crud, "DATA_DIR", tmp_path)
     monkeypatch.setattr(crud, "POSTS_FILE", path)
     return path
+
+
+@pytest.fixture(autouse=True)
+def other_data_files(tmp_path, monkeypatch):
+    """Keep users and recruiters in the per-test temp dir too"""
+    monkeypatch.setattr(users, "USERS_FILE", tmp_path / "users.json")
+    monkeypatch.setattr(recruiters, "RECRUITERS_FILE", tmp_path / "recruiters.json")
 
 
 @pytest.fixture(autouse=True)

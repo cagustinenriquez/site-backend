@@ -5,7 +5,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from app.limiter import limiter
-from app.routes import posts, auth
+from app.routes import posts, auth, recruiters
 
 app = FastAPI(
     title="agustinenriquez.dev API",
@@ -32,6 +32,7 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(posts.router)
+app.include_router(recruiters.router)
 
 
 @app.get("/health")
