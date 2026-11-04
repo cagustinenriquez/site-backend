@@ -2,8 +2,15 @@
 from datetime import datetime
 from typing import List, Optional
 
-from app.db_models import RecruiterRow
-from app.models import Recruiter, RecruiterCreate, RecruiterSort, RecruiterUpdate
+from app.db_models import RecruiterCommentRow, RecruiterRow
+from app.models import (
+    Recruiter,
+    RecruiterComment,
+    RecruiterCommentCreate,
+    RecruiterCreate,
+    RecruiterSort,
+    RecruiterUpdate,
+)
 from app.storage import Database, table
 
 
@@ -77,3 +84,46 @@ def delete_recruiter(db: Database, recruiter_id: str) -> bool:
     if not recruiter_id.isdigit():
         return False
     return _recruiters(db).delete(id=int(recruiter_id))
+
+
+def _comments(db: Database):
+    return table(db, RecruiterCommentRow)
+
+
+def _to_comment(row: dict) -> RecruiterComment:
+    return RecruiterComment(**{**row, "id": str(row["id"]), "recruiter_id": str(row["recruiter_id"])})
+
+
+def _recruiter_exists(db: Database, recruiter_id: str) -> bool:
+    return recruiter_id.isdigit() and _recruiters(db).get(id=int(recruiter_id)) is not None
+
+
+def list_comments(db: Database, recruiter_id: str) -> Optional[List[RecruiterComment]]:
+    """A recruiter's comments, newest first; None if the recruiter doesn't exist"""
+    if not _recruiter_exists(db, recruiter_id):
+        return None
+    comments = [_to_comment(row) for row in _comments(db).all(recruiter_id=int(recruiter_id))]
+    comments.sort(key=lambda c: (c.created_at, int(c.id)), reverse=True)
+    return comments
+
+
+def add_comment(
+    db: Database, recruiter_id: str, author: str, payload: RecruiterCommentCreate
+) -> Optional[RecruiterComment]:
+    """None if the recruiter doesn't exist"""
+    if not _recruiter_exists(db, recruiter_id):
+        return None
+    row = _comments(db).insert({
+        "recruiter_id": int(recruiter_id),
+        "author": author,
+        "body": payload.body,
+        "created_at": datetime.now(),
+    })
+    return _to_comment(row)
+
+
+def delete_comment(db: Database, recruiter_id: str, comment_id: str) -> bool:
+    """Only deletes the comment if it belongs to this recruiter"""
+    if not (recruiter_id.isdigit() and comment_id.isdigit()):
+        return False
+    return _comments(db).delete(id=int(comment_id), recruiter_id=int(recruiter_id))

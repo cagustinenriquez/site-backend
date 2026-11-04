@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import JSON, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -46,3 +46,17 @@ class RecruiterRow(Base):
     average_rating: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime)
     updated_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class RecruiterCommentRow(Base):
+    __tablename__ = "recruiter_comments"
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Comments go when their recruiter is deleted (done by the database)
+    recruiter_id: Mapped[int] = mapped_column(
+        ForeignKey("recruiters.id", ondelete="CASCADE"), index=True
+    )
+    author: Mapped[str] = mapped_column(String(150))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime)

@@ -43,8 +43,10 @@ class SqlTable:
         row = self._find(filters)
         return self._to_dict(row) if row else None
 
-    def all(self) -> list:
-        return [self._to_dict(row) for row in self.session.scalars(select(self.model))]
+    def all(self, **filters) -> list:
+        """Every row, or only those matching `filters`"""
+        rows = self.session.scalars(select(self.model).filter_by(**filters))
+        return [self._to_dict(row) for row in rows]
 
     def exists(self) -> bool:
         return bool(self.session.scalar(select(exists().select_from(self.model))))
@@ -136,13 +138,15 @@ class RestTable:
         ).json()
         return self._decode(rows[0]) if rows else None
 
-    def all(self) -> list:
+    def all(self, **filters) -> list:
+        """Every row, or only those matching `filters`"""
         rows, offset = [], 0
         while True:
             page = self.client.request(
                 "GET", self.name,
                 params={"select": "*", "order": self.first_key,
-                        "limit": self.client.PAGE_SIZE, "offset": offset},
+                        "limit": self.client.PAGE_SIZE, "offset": offset,
+                        **self._filters(filters)},
             ).json()
             rows.extend(page)
             if len(page) < self.client.PAGE_SIZE:
