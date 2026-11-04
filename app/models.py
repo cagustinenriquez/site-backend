@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StringConstraints
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 
 
 class PostBase(BaseModel):
@@ -81,3 +81,16 @@ class RecruiterListResponse(BaseModel):
     total: int
     page: int
     limit: int
+
+
+class RecruiterCommentCreate(BaseModel):
+    # Trimmed before the length check, so whitespace-only bodies are rejected
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class RecruiterComment(BaseModel):
+    id: str
+    recruiter_id: str
+    author: str
+    body: str
+    created_at: datetime

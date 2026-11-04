@@ -45,7 +45,7 @@ REST_MODE = bool(TEST_POSTGREST_URL)
 if REST_MODE and not TEST_DATABASE_URL:
     raise RuntimeError("TEST_POSTGREST_URL also needs TEST_DATABASE_URL (to create the tables)")
 
-TABLES = ["posts", "recruiters", "users"]
+TABLES = ["posts", "recruiters", "recruiter_comments", "users"]
 
 
 def postgrest_key(role: str) -> str:

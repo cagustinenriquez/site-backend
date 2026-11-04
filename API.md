@@ -231,6 +231,29 @@ Body: `name` and `company` (required), plus optional `email`, `phone`, `linkedin
 Any recruiter field, plus `total_placements` (>= 0) and `average_rating` (0-5). Only fields sent are changed.
 
 #### DELETE /recruiters/{id} (auth required)
+Also deletes the recruiter's comments.
+
+#### GET /recruiters/{id}/comments (auth required)
+The recruiter's comments, newest first. `404` "Recruiter not found" if the recruiter doesn't exist.
+
+**Response:**
+```json
+[
+  {
+    "id": "1",
+    "recruiter_id": "1",
+    "author": "admin",
+    "body": "Quick to reply, honest about the salary range",
+    "created_at": "2026-11-04T12:00:00"
+  }
+]
+```
+
+#### POST /recruiters/{id}/comments (auth required)
+Body: `{ "body": "..." }`. The body is trimmed and must then be 1-2000 characters (`422` otherwise). `author` is the logged-in username. Returns the new comment. `404` "Recruiter not found" if the recruiter doesn't exist.
+
+#### DELETE /recruiters/{id}/comments/{comment_id} (auth required)
+`404` "Comment not found" if the comment doesn't exist or belongs to another recruiter.
 
 ### Health Check
 

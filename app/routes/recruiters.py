@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.storage import Database
@@ -8,6 +8,8 @@ from app.auth import get_current_user
 from app.db import get_db
 from app.models import (
     Recruiter,
+    RecruiterComment,
+    RecruiterCommentCreate,
     RecruiterCreate,
     RecruiterListResponse,
     RecruiterSort,
@@ -78,3 +80,43 @@ def delete_recruiter(
     if not store.delete_recruiter(db, recruiter_id):
         raise HTTPException(status_code=404, detail="Recruiter not found")
     return {"detail": "Recruiter deleted successfully"}
+
+
+@router.get("/{recruiter_id}/comments", response_model=List[RecruiterComment])
+def list_comments(
+    recruiter_id: str,
+    current_user: str = Depends(get_current_user),
+    db: Database = Depends(get_db),
+):
+    """A recruiter's comments, newest first (requires authentication)"""
+    comments = store.list_comments(db, recruiter_id)
+    if comments is None:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+    return comments
+
+
+@router.post("/{recruiter_id}/comments", response_model=RecruiterComment)
+def add_comment(
+    recruiter_id: str,
+    payload: RecruiterCommentCreate,
+    current_user: str = Depends(get_current_user),
+    db: Database = Depends(get_db),
+):
+    """Comment on a recruiter as the logged-in user (requires authentication)"""
+    comment = store.add_comment(db, recruiter_id, current_user, payload)
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+    return comment
+
+
+@router.delete("/{recruiter_id}/comments/{comment_id}")
+def delete_comment(
+    recruiter_id: str,
+    comment_id: str,
+    current_user: str = Depends(get_current_user),
+    db: Database = Depends(get_db),
+):
+    """Delete a comment (requires authentication)"""
+    if not store.delete_comment(db, recruiter_id, comment_id):
+        raise HTTPException(status_code=404, detail="Comment not found")
+    return {"detail": "Comment deleted successfully"}
