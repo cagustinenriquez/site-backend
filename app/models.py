@@ -94,3 +94,55 @@ class RecruiterComment(BaseModel):
     author: str
     body: str
     created_at: datetime
+
+
+InterviewType = Literal["coding", "system_design", "behavioral", "take_home", "pair_programming", "other"]
+InterviewerSort = Literal["rating", "name", "created_at"]
+
+
+class InterviewerBase(BaseModel):
+    name: str = Field(min_length=1)
+    company: str = Field(min_length=1)
+    role: Optional[str] = None
+    # The admin form sends "" when left blank
+    email: str = ""
+    linkedin: Optional[str] = None
+    notes: Optional[str] = None
+    interview_types: List[InterviewType] = []
+    rating: float = Field(default=0.0, ge=0, le=5)
+
+
+class InterviewerCreate(InterviewerBase):
+    pass
+
+
+class InterviewerUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1)
+    company: Optional[str] = Field(default=None, min_length=1)
+    role: Optional[str] = None
+    email: Optional[str] = None
+    linkedin: Optional[str] = None
+    notes: Optional[str] = None
+    interview_types: Optional[List[InterviewType]] = None
+    rating: Optional[float] = Field(default=None, ge=0, le=5)
+
+
+class Interviewer(InterviewerBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class InterviewerListResponse(BaseModel):
+    interviewers: List[Interviewer]
+    total: int
+    page: int
+    limit: int
+
+
+class InterviewerComment(BaseModel):
+    id: str
+    interviewer_id: str
+    author: str
+    body: str
+    created_at: datetime
