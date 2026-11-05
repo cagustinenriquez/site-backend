@@ -255,6 +255,66 @@ Body: `{ "body": "..." }`. The body is trimmed and must then be 1-2000 character
 #### DELETE /recruiters/{id}/comments/{comment_id} (auth required)
 `404` "Comment not found" if the comment doesn't exist or belongs to another recruiter.
 
+### Interviewers
+
+Technical interviewers. Works like recruiters; every endpoint requires authentication.
+
+#### GET /interviewers (auth required)
+List interviewers.
+
+**Query Parameters:**
+- `page` (number, default 1), `limit` (number, default 10, max 100)
+- `sort` - `rating` (default, highest first), `created_at` (newest first) or `name` (A-Z). Ties are broken by name.
+- `search` - case-insensitive match on name, company or role
+- `type` - only interviewers whose `interview_types` include this one
+
+Interview types: `coding`, `system_design`, `behavioral`, `take_home`, `pair_programming`, `other`.
+
+**Response:**
+```json
+{
+  "interviewers": [
+    {
+      "id": "1",
+      "name": "Dana Lee",
+      "company": "Initech",
+      "role": "Staff Engineer",
+      "email": "",
+      "linkedin": null,
+      "interview_types": ["system_design"],
+      "rating": 4.5,
+      "notes": "Asked to design a URL shortener",
+      "created_at": "2026-11-05T12:00:00",
+      "updated_at": "2026-11-05T12:00:00"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 10
+}
+```
+
+#### GET /interviewers/{id} (auth required)
+Get one interviewer. `404` "Interviewer not found" if not found.
+
+#### POST /interviewers (auth required)
+Body: `name` and `company` (required), plus optional `role`, `email`, `linkedin`, `notes`, `interview_types` (list) and `rating` (0-5, saved as given).
+
+#### PUT /interviewers/{id} (auth required)
+Any interviewer field. Only fields sent are changed.
+
+#### DELETE /interviewers/{id} (auth required)
+Also deletes the interviewer's comments.
+
+#### GET /interviewers/{id}/comments (auth required)
+Newest first. Each comment has `id`, `interviewer_id`, `author`, `body` and `created_at`. `404` "Interviewer not found" if the interviewer doesn't exist.
+
+#### POST /interviewers/{id}/comments (auth required)
+Body: `{ "body": "..." }`, trimmed, then 1-2000 characters. `author` is the logged-in username.
+
+#### DELETE /interviewers/{id}/comments/{comment_id} (auth required)
+`404` "Comment not found" if the comment doesn't exist or belongs to another interviewer.
+
 ### Health Check
 
 #### GET /health

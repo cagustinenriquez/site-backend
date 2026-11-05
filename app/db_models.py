@@ -60,3 +60,35 @@ class RecruiterCommentRow(Base):
     author: Mapped[str] = mapped_column(String(150))
     body: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class InterviewerRow(Base):
+    __tablename__ = "interviewers"
+    # Never reuse ids of deleted rows (Postgres sequences already behave this way)
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    company: Mapped[str] = mapped_column(String(255))
+    role: Mapped[Optional[str]] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255), default="")
+    linkedin: Mapped[Optional[str]] = mapped_column(String(500))
+    interview_types: Mapped[List[str]] = mapped_column(JSON, default=list)
+    rating: Mapped[float] = mapped_column(Float, default=0.0)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
+    updated_at: Mapped[datetime] = mapped_column(DateTime)
+
+
+class InterviewerCommentRow(Base):
+    __tablename__ = "interviewer_comments"
+    __table_args__ = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # Comments go when their interviewer is deleted (done by the database)
+    interviewer_id: Mapped[int] = mapped_column(
+        ForeignKey("interviewers.id", ondelete="CASCADE"), index=True
+    )
+    author: Mapped[str] = mapped_column(String(150))
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime)
